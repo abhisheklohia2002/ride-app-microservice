@@ -1,0 +1,85 @@
+# ==========================
+# Binaries
+# ==========================
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Build directories
+bin/
+build/
+dist/
+
+# ==========================
+# Go
+# ==========================
+vendor/
+coverage.out
+*.coverprofile
+
+# ==========================
+# Environment
+# ==========================
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# ==========================
+# Logs
+# ==========================
+*.log
+logs/
+
+# ==========================
+# IDE
+# ==========================
+.vscode/
+.idea/
+*.swp
+
+# ==========================
+# OS Files
+# ==========================
+.DS_Store
+Thumbs.db
+
+# ==========================
+# Temporary
+# ==========================
+tmp/
+temp/
+
+# ==========================
+# Database
+# ==========================
+*.db
+*.sqlite
+*.sqlite3
+
+# ==========================
+# Docker
+# ==========================
+docker-compose.override.yml
+
+# ==========================
+# Generated Protobuf (Optional)
+# ==========================
+# Uncomment ONLY if you generate these in CI.
+# *.pb.go
+# *_grpc.pb.go
+
+# RSA / JWT keys
+user-service/openSSL/
+user-service/openSSL/
+*.pem
+
+# Go build output
+/bin/
+/dist/
+/build/
