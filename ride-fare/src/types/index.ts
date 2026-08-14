@@ -70,7 +70,9 @@ export interface Place {
   name: string;
   address: string;
   coords: LatLng;
+
   category: PlaceCategory;
+  
 }
 
 export type RideCategoryId = "go" | "sedan" | "suv" | "luxury" | "bike" | "auto";

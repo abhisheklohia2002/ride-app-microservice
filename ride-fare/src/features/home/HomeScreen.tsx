@@ -36,13 +36,13 @@ export function HomeScreen() {
       to: "/confirm-ride",
     });
   };
-  const setUser = useAuthStore((state) => state.setUser);
+  const { setUser, user } = useAuthStore((state) => state);
 
-const meQuery = useQuery({
-  queryKey: ["auth", "me"],
-  queryFn: authApi.me,
-  retry: false,
-});
+  const meQuery = useQuery({
+    queryKey: ["auth", "me"],
+    queryFn: authApi.me,
+    retry: false,
+  });
   const savedQuery = useQuery({
     queryKey: queryKeys.locations.saved,
     queryFn: locationApi.savedPlaces,
@@ -112,10 +112,10 @@ const meQuery = useQuery({
   };
 
   useEffect(() => {
-  if (meQuery.data) {
-    setUser(meQuery?.data);
-  }
-}, [meQuery.data, setUser]);
+    if (meQuery.data) {
+      setUser(meQuery?.data);
+    }
+  }, [meQuery.data, setUser]);
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -158,10 +158,13 @@ const meQuery = useQuery({
       ====================================================== */}
 
       <MapCanvas
-        className="absolute inset-0 h-full w-full"
+        className="
+    absolute
+    inset-0
+    h-full
+    w-full
+  "
         pickup={pickup?.coords}
-        vehicles={vehicles}
-        showRadar
       />
 
       {/* =====================================================
@@ -175,7 +178,7 @@ const meQuery = useQuery({
           <div className="leading-tight">
             <p className="text-[11px] tracking-wide text-muted-foreground uppercase">Good day</p>
 
-            <p className="text-sm font-semibold text-foreground">Aarav</p>
+            <p className="text-sm font-semibold text-foreground">{user?.full_name}</p>
           </div>
         </div>
 
@@ -274,7 +277,6 @@ const meQuery = useQuery({
           />
         </motion.div>
 
-
         <div
           className={`
             h-[calc(100%-40px)]
@@ -287,8 +289,6 @@ const meQuery = useQuery({
             ${isOpen ? "opacity-100" : "pointer-events-none opacity-0"}
           `}
         >
-
-
           <section>
             <h1
               className="

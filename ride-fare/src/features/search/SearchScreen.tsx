@@ -1,74 +1,254 @@
 import { useEffect, useRef, useState } from "react";
 
-import { ArrowLeft, Clock3, MapPin, Search, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Clock3,
+  MapPin,
+  Search,
+  X,
+} from "lucide-react";
 
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 
-import { autocompletePlaces, getPlaceDetails, type PlacePrediction } from "@/api/places.api";
+import {
+  autocompletePlaces,
+  reverseGeocode,
+  type PlacePrediction,
+} from "@/api/places.api";
 
 import { useRideStore } from "@/store/ride.store";
-
-import type { Place } from "@/types";
 
 export function SearchScreen() {
   const navigate = useNavigate();
 
-  const { pickup, setDestination } = useRideStore();
+  const {
+    pickup,
+    setPickup,
+    setDestination,
+  } = useRideStore();
 
   const [query, setQuery] = useState("");
 
-  const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
+  const [predictions, setPredictions] = useState<
+    PlacePrediction[]
+  >([]);
 
   const [loading, setLoading] = useState(false);
 
-  const [selectingPlace, setSelectingPlace] = useState(false);
+  const [locationLoading, setLocationLoading] =
+    useState(false);
+
+  const [selectingPlace, setSelectingPlace] =
+    useState(false);
 
   /*
-   * Google Places session token.
-   *
-   * One token is used for:
-   *
-   * autocomplete requests
-   *       ↓
-   * selected place
-   *       ↓
-   * place details
+   * Used to prevent an older autocomplete
+   * response from replacing a newer response.
    */
-
-  const sessionTokenRef = useRef(crypto.randomUUID());
-
-  /*
-   * Prevent state update after
-   * component unmount.
-   */
-
   const requestIdRef = useRef(0);
 
   /*
    * --------------------------------------------------
-   * Generate new Places session
+   * GET CURRENT LOCATION
    * --------------------------------------------------
+   *
+   * When SearchScreen opens:
+   *
+   * Browser GPS
+   *     ↓
+   * latitude / longitude
+   *     ↓
+   * Geoapify reverse geocoding
+   *     ↓
+   * pickup
    */
 
-  const createNewSession = () => {
-    sessionTokenRef.current = crypto.randomUUID();
-  };
+  useEffect(() => {
+    /*
+     * If pickup already exists, don't request
+     * the user's location again.
+     */
+    if (pickup) {
+      setLocationLoading(false);
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      toast.error(
+        "Geolocation is not supported by your browser",
+      );
+
+      setLocationLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    setLocationLoading(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        if (cancelled) {
+          return;
+        }
+
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        try {
+          /*
+           * Convert coordinates into a readable
+           * address using Geoapify.
+           */
+          const address = await reverseGeocode({
+            lat,
+            lng,
+          });
+
+          if (cancelled) {
+            return;
+          }
+
+          setPickup({
+            id: `current-location-${lat}-${lng}`,
+
+            name: "Current location",
+
+            address:
+              address?.formatted ??
+              "Current location",
+
+            category: "home",
+
+            coords: {
+              lat,
+              lng,
+            },
+          });
+        } catch (error) {
+          console.error(
+            "Reverse geocoding failed:",
+            error,
+          );
+
+          /*
+           * Even if reverse geocoding fails,
+           * we still have valid GPS coordinates.
+           */
+          if (!cancelled) {
+            setPickup({
+              id: `current-location-${lat}-${lng}`,
+
+              name: "Current location",
+
+              address: "Current location",
+
+              category: "other",
+
+              coords: {
+                lat,
+                lng,
+              },
+            });
+
+            toast.message(
+              "Using your current coordinates",
+            );
+          }
+        } finally {
+          if (!cancelled) {
+            setLocationLoading(false);
+          }
+        }
+      },
+
+      (error) => {
+        if (cancelled) {
+          return;
+        }
+
+        console.error(
+          "Geolocation error:",
+          error,
+        );
+
+        setLocationLoading(false);
+
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            toast.error(
+              "Please allow location access to find your current location",
+            );
+            break;
+
+          case error.POSITION_UNAVAILABLE:
+            toast.error(
+              "Your current location is unavailable",
+            );
+            break;
+
+          case error.TIMEOUT:
+            toast.error(
+              "Location request timed out",
+            );
+            break;
+
+          default:
+            toast.error(
+              "Unable to get your current location",
+            );
+        }
+      },
+
+      {
+        /*
+         * Better accuracy for ride applications.
+         */
+        enableHighAccuracy: true,
+
+        /*
+         * Don't wait forever.
+         */
+        timeout: 10000,
+
+        /*
+         * Reuse a recent browser location
+         * for up to 30 seconds.
+         */
+        maximumAge: 30000,
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pickup, setPickup]);
 
   /*
    * --------------------------------------------------
-   * Search places
+   * SEARCH DESTINATION
    * --------------------------------------------------
+   *
+   * User types:
+   *
+   * "airport"
+   *
+   * ↓
+   *
+   * Geoapify Autocomplete
+   *
+   * ↓
+   *
+   * predictions
    */
 
   useEffect(() => {
     const value = query.trim();
 
     /*
-     * Don't search for very short
-     * queries.
+     * Don't call API for short queries.
      */
-
     if (value.length < 2) {
       setPredictions([]);
       setLoading(false);
@@ -77,60 +257,80 @@ export function SearchScreen() {
     }
 
     /*
-     * Create request id.
-     *
-     * This prevents an older API response
-     * from overwriting a newer search.
+     * Every search gets a unique request ID.
      */
-
-    const requestId = ++requestIdRef.current;
+    const requestId =
+      ++requestIdRef.current;
 
     /*
-     * Debounce Google API calls.
+     * Debounce the request by 300ms.
      */
+    const timer = window.setTimeout(
+      async () => {
+        try {
+          setLoading(true);
 
-    const timer = window.setTimeout(async () => {
-      try {
-        setLoading(true);
+          const results =
+            await autocompletePlaces(
+              value,
+              pickup?.coords,
+            );
 
-        const results = await autocompletePlaces(value, sessionTokenRef.current);
+          /*
+           * Ignore old API responses.
+           */
+          if (
+            requestId !==
+            requestIdRef.current
+          ) {
+            return;
+          }
 
-        /*
-         * Ignore stale response.
-         */
+          setPredictions(results);
+        } catch (error) {
+          console.error(
+            "Geoapify autocomplete error:",
+            error,
+          );
 
-        if (requestId !== requestIdRef.current) {
-          return;
+          if (
+            requestId ===
+            requestIdRef.current
+          ) {
+            setPredictions([]);
+
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : "Unable to search locations",
+            );
+          }
+        } finally {
+          if (
+            requestId ===
+            requestIdRef.current
+          ) {
+            setLoading(false);
+          }
         }
-
-        setPredictions(results);
-      } catch (error) {
-        console.error("Google Places autocomplete error:", error);
-
-        if (requestId === requestIdRef.current) {
-          setPredictions([]);
-
-          toast.error("Unable to search locations");
-        }
-      } finally {
-        if (requestId === requestIdRef.current) {
-          setLoading(false);
-        }
-      }
-    }, 300);
+      },
+      300,
+    );
 
     return () => {
       window.clearTimeout(timer);
     };
-  }, [query]);
+  }, [query, pickup]);
 
   /*
    * --------------------------------------------------
-   * Select place
+   * SELECT DESTINATION
    * --------------------------------------------------
    */
 
-  const handleSelectPlace = async (prediction: PlacePrediction) => {
+  const handleSelectPlace = (
+    prediction: PlacePrediction,
+  ) => {
     if (selectingPlace) {
       return;
     }
@@ -139,71 +339,56 @@ export function SearchScreen() {
       setSelectingPlace(true);
 
       /*
-       * Get complete details.
+       * Geoapify already gives us:
+       *
+       * - name
+       * - address
+       * - latitude
+       * - longitude
+       *
+       * So we don't need another details API.
        */
+      setDestination({
+        id: prediction.placeId,
 
-      const details = await getPlaceDetails(prediction.placeId, sessionTokenRef.current);
+        name: prediction.name,
 
-      /*
-       * Google should return location.
-       */
+        address:
+          prediction.description,
 
-      if (!details.location) {
-        throw new Error("Location coordinates are unavailable");
-      }
-
-      /*
-       * Convert Google response
-       * into your application's Place.
-       */
-
-      const place: Place = {
-        id: details.id,
-
-        name: details.displayName?.text ?? prediction.name,
-
-        address: details.formattedAddress ?? prediction.description,
+        category: "home",
 
         coords: {
-          lat: details.location.latitude,
+          lat: prediction.lat,
 
-          lng: details.location.longitude,
+          lng: prediction.lng,
         },
-      };
+      });
 
       /*
-       * Save destination
-       * in Zustand.
+       * Clear search state.
        */
-
-      setDestination(place);
-
-      /*
-       * Clear current search.
-       */
-
       setQuery("");
 
       setPredictions([]);
 
       /*
-       * Start a new Google Places
-       * session for the next search.
+       * Go to ride confirmation.
        */
-
-      createNewSession();
-
-      /*
-       * Go to Confirm Ride.
-       */
-
       void navigate({
         to: "/confirm-ride",
       });
     } catch (error) {
-      console.error("Place selection failed:", error);
+      console.error(
+        "Place selection failed:",
+        error,
+      );
 
-      toast.error(error instanceof Error ? error.message : "Unable to select this location");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to select this location",
+      );
     } finally {
       setSelectingPlace(false);
     }
@@ -211,25 +396,26 @@ export function SearchScreen() {
 
   /*
    * --------------------------------------------------
-   * Clear search
+   * CLEAR SEARCH
    * --------------------------------------------------
    */
 
   const clearSearch = () => {
     setQuery("");
+
     setPredictions([]);
 
-    /*
-     * New session because the
-     * current search has ended.
-     */
+    setLoading(false);
 
-    createNewSession();
+    /*
+     * Invalidate previous requests.
+     */
+    requestIdRef.current++;
   };
 
   /*
    * --------------------------------------------------
-   * Back
+   * BACK
    * --------------------------------------------------
    */
 
@@ -239,6 +425,12 @@ export function SearchScreen() {
     });
   };
 
+  /*
+   * --------------------------------------------------
+   * UI
+   * --------------------------------------------------
+   */
+
   return (
     <main
       className="
@@ -247,9 +439,9 @@ export function SearchScreen() {
         text-foreground
       "
     >
-      {/* =================================================
+      {/* =============================================
           HEADER
-      ================================================== */}
+      ============================================== */}
 
       <header
         className="
@@ -290,13 +482,13 @@ export function SearchScreen() {
             font-bold
           "
         >
-          Where to?
+          Where to Today?
         </h1>
       </header>
 
-      {/* =================================================
+      {/* =============================================
           SEARCH INPUT
-      ================================================== */}
+      ============================================== */}
 
       <section className="px-5">
         <div
@@ -326,7 +518,11 @@ export function SearchScreen() {
           <input
             autoFocus
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(
+                event.target.value,
+              );
+            }}
             placeholder="Search destination"
             className="
               min-w-0
@@ -363,27 +559,13 @@ export function SearchScreen() {
         </div>
       </section>
 
-      {/* =================================================
+      {/* =============================================
           CURRENT LOCATION
-      ================================================== */}
+      ============================================== */}
 
       {!query && (
         <section className="px-5">
-          <button
-            type="button"
-            onClick={() => {
-              if (!pickup) {
-                toast.error("Current location is not available");
-
-                return;
-              }
-
-              setDestination(pickup);
-
-              void navigate({
-                to: "/confirm-ride",
-              });
-            }}
+          <div
             className="
               mt-4
               flex
@@ -395,9 +577,6 @@ export function SearchScreen() {
               border-border
               bg-elevated
               p-4
-              text-left
-              transition
-              active:scale-[0.99]
             "
           >
             <span
@@ -412,13 +591,27 @@ export function SearchScreen() {
                 bg-primary/10
               "
             >
-              <MapPin
-                className="
-                  h-4
-                  w-4
-                  text-primary
-                "
-              />
+              {locationLoading ? (
+                <span
+                  className="
+                    h-4
+                    w-4
+                    animate-spin
+                    rounded-full
+                    border-2
+                    border-muted-foreground/30
+                    border-t-primary
+                  "
+                />
+              ) : (
+                <MapPin
+                  className="
+                    h-4
+                    w-4
+                    text-primary
+                  "
+                />
+              )}
             </span>
 
             <span className="min-w-0">
@@ -430,27 +623,33 @@ export function SearchScreen() {
                   text-foreground
                 "
               >
-                Use current location
+                {locationLoading
+                  ? "Getting your location..."
+                  : "Current location"}
               </span>
 
               <span
                 className="
                   mt-0.5
                   block
+                  truncate
                   text-[12px]
                   text-muted-foreground
                 "
               >
-                {pickup?.address ?? "Your current location"}
+                {locationLoading
+                  ? "Please allow location access"
+                  : pickup?.address ??
+                    "Location unavailable"}
               </span>
             </span>
-          </button>
+          </div>
         </section>
       )}
 
-      {/* =================================================
-          SEARCHING
-      ================================================== */}
+      {/* =============================================
+          SEARCH LOADING
+      ============================================== */}
 
       {loading && (
         <div
@@ -475,28 +674,39 @@ export function SearchScreen() {
               border-t-primary
             "
           />
+
           Searching places...
         </div>
       )}
 
-      {/* =================================================
+      {/* =============================================
           SEARCH RESULTS
-      ================================================== */}
+      ============================================== */}
 
-      {!loading && predictions.length > 0 && (
-        <section
-          className="
+      {!loading &&
+        predictions.length > 0 && (
+          <section
+            className="
               mt-3
               px-3
             "
-        >
-          {predictions.map((prediction) => (
-            <button
-              key={prediction.placeId}
-              type="button"
-              disabled={selectingPlace}
-              onClick={() => handleSelectPlace(prediction)}
-              className="
+          >
+            {predictions.map(
+              (prediction) => (
+                <button
+                  key={
+                    prediction.placeId
+                  }
+                  type="button"
+                  disabled={
+                    selectingPlace
+                  }
+                  onClick={() =>
+                    handleSelectPlace(
+                      prediction,
+                    )
+                  }
+                  className="
                     flex
                     w-full
                     items-center
@@ -509,11 +719,11 @@ export function SearchScreen() {
                     active:scale-[0.99]
                     disabled:opacity-60
                   "
-            >
-              {/* Icon */}
+                >
+                  {/* Location icon */}
 
-              <span
-                className="
+                  <span
+                    className="
                       flex
                       h-10
                       w-10
@@ -523,60 +733,123 @@ export function SearchScreen() {
                       rounded-full
                       bg-primary/10
                     "
-              >
-                <MapPin
-                  className="
+                  >
+                    <MapPin
+                      className="
                         h-4
                         w-4
                         text-primary
                       "
-                />
-              </span>
+                    />
+                  </span>
 
-              {/* Text */}
+                  {/* Place information */}
 
-              <span
-                className="
+                  <span
+                    className="
                       min-w-0
                       flex-1
                     "
-              >
-                <span
-                  className="
+                  >
+                    <span
+                      className="
                         block
                         truncate
                         text-[15px]
                         font-semibold
                         text-foreground
                       "
-                >
-                  {prediction.name}
-                </span>
+                    >
+                      {
+                        prediction.name
+                      }
+                    </span>
 
-                <span
-                  className="
+                    <span
+                      className="
                         mt-0.5
                         block
                         truncate
                         text-[13px]
                         text-muted-foreground
                       "
-                >
-                  {prediction.description}
-                </span>
-              </span>
-            </button>
-          ))}
-        </section>
-      )}
+                    >
+                      {
+                        prediction.description
+                      }
+                    </span>
+                  </span>
+                </button>
+              ),
+            )}
+          </section>
+        )}
 
-      {/* =================================================
-          NO RESULTS
-      ================================================== */}
+      {/* =============================================
+          SELECTING PLACE
+      ============================================== */}
 
-      {!loading && query.trim().length >= 2 && predictions.length === 0 && (
+      {selectingPlace && (
         <div
           className="
+            fixed
+            inset-0
+            z-50
+            flex
+            items-center
+            justify-center
+            bg-background/50
+            backdrop-blur-sm
+          "
+        >
+          <div
+            className="
+              flex
+              items-center
+              gap-3
+              rounded-2xl
+              border
+              border-border
+              bg-elevated
+              px-5
+              py-4
+              shadow-xl
+            "
+          >
+            <span
+              className="
+                h-5
+                w-5
+                animate-spin
+                rounded-full
+                border-2
+                border-muted-foreground/30
+                border-t-primary
+              "
+            />
+
+            <span
+              className="
+                text-sm
+                font-medium
+              "
+            >
+              Selecting destination...
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* =============================================
+          NO RESULTS
+      ============================================== */}
+
+      {!loading &&
+        !selectingPlace &&
+        query.trim().length >= 2 &&
+        predictions.length === 0 && (
+          <div
+            className="
               flex
               flex-col
               items-center
@@ -585,9 +858,9 @@ export function SearchScreen() {
               py-16
               text-center
             "
-        >
-          <span
-            className="
+          >
+            <span
+              className="
                 flex
                 h-12
                 w-12
@@ -596,47 +869,45 @@ export function SearchScreen() {
                 rounded-full
                 bg-muted
               "
-          >
-            <MapPin
-              className="
+            >
+              <MapPin
+                className="
                   h-5
                   w-5
                   text-muted-foreground
                 "
-            />
-          </span>
+              />
+            </span>
 
-          <p
-            className="
+            <p
+              className="
                 mt-4
                 text-sm
                 font-semibold
                 text-foreground
               "
-          >
-            No places found
-          </p>
+            >
+              No places found
+            </p>
 
-          <p
-            className="
+            <p
+              className="
                 mt-1
                 max-w-xs
                 text-[13px]
                 text-muted-foreground
               "
-          >
-            Try searching for a nearby landmark, street, area, or destination.
-          </p>
-        </div>
-      )}
+            >
+              Try searching for a nearby
+              landmark, street, area, or
+              destination.
+            </p>
+          </div>
+        )}
 
-      {/* =================================================
-          RECENT / SAVED PLACE AREA
-          
-          Keep your existing saved/recent
-          components here if you already
-          have them.
-      ================================================== */}
+      {/* =============================================
+          RECENT PLACES
+      ============================================== */}
 
       {!query && (
         <section className="mt-5 px-5">
@@ -673,7 +944,8 @@ export function SearchScreen() {
               text-muted-foreground
             "
           >
-            Search for a destination to see matching places.
+            Search for a destination to
+            see matching places.
           </p>
         </section>
       )}

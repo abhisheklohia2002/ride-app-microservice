@@ -1,127 +1,218 @@
-const GOOGLE_PLACES_URL = "https://places.googleapis.com/v1";
 
-const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+const GEOAPIFY_BASE_URL =
+  "https://api.geoapify.com/v1";
+
+const GEOAPIFY_API_KEY =
+  import.meta.env.VITE_GEOAPIFY_API_KEY;
+
+if (!GEOAPIFY_API_KEY) {
+  console.warn(
+    "VITE_GEOAPIFY_API_KEY is not configured",
+  );
+}
 
 export interface PlacePrediction {
   placeId: string;
   name: string;
   description: string;
+
+  lat: number;
+  lng: number;
+
+  category?: string;
 }
 
-interface AutocompleteResponse {
-  suggestions?: Array<{
-    placePrediction?: {
-      placeId: string;
-      text?: {
-        text?: string;
-      };
-      structuredFormat?: {
-        mainText?: {
-          text?: string;
-        };
-        secondaryText?: {
-          text?: string;
-        };
-      };
-    };
-  }>;
-}
+interface GeoapifyResult {
+  place_id?: string;
 
-interface PlaceDetailsResponse {
-  id: string;
-  displayName?: {
-    text?: string;
+  name?: string;
+
+  formatted?: string;
+
+  address_line1?: string;
+
+  address_line2?: string;
+
+  city?: string;
+
+  state?: string;
+
+  country?: string;
+
+  country_code?: string;
+
+  lat: number;
+
+  lon: number;
+
+  result_type?: string;
+
+  category?: string;
+
+  rank?: {
+    confidence?: number;
+    confidence_city_level?: number;
+    confidence_street_level?: number;
+    confidence_building_level?: number;
   };
-  formattedAddress?: string;
-  location?: {
-    latitude: number;
-    longitude: number;
-  };
+
+  distance?: number;
 }
 
-export async function autocompletePlaces(input: string, sessionToken: string) {
-  if (!input.trim()) {
+
+export interface CurrentLocation {
+  lat: number;
+  lng: number;
+}
+
+export interface ReverseGeocodeResult {
+  lat: number;
+  lon: number;
+  formatted?: string;
+  address_line1?: string;
+  address_line2?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+}
+interface GeoapifyAutocompleteResponse {
+  results?: GeoapifyResult[];
+}
+
+export async function autocompletePlaces(
+  input: string,
+  pickup?: {
+    lat: number;
+    lng: number;
+  },
+): Promise<PlacePrediction[]> {
+  const value = input.trim();
+
+  if (!value) {
     return [];
   }
 
-  const response = await fetch(`${GOOGLE_PLACES_URL}/places:autocomplete`, {
-    method: "POST",
-
-    headers: {
-      "Content-Type": "application/json",
-
-      "X-Goog-Api-Key": API_KEY,
-
-      "X-Goog-FieldMask":
-        "suggestions.placePrediction.placeId," +
-        "suggestions.placePrediction.text," +
-        "suggestions.placePrediction.structuredFormat",
-    },
-
-    body: JSON.stringify({
-      input,
-
-      sessionToken,
-
-      regionCode: "IN",
-
-      includedRegionCodes: ["IN"],
-
-      locationBias: {
-        circle: {
-          center: {
-            latitude: pickup.coords.lat,
-            longitude: pickup.coords.lng,
-          },
-          radius: 50000,
-        },
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-
-    throw new Error(error || "Failed to search places");
+  if (!GEOAPIFY_API_KEY) {
+    throw new Error(
+      "Geoapify API key is not configured",
+    );
   }
 
-  const data = (await response.json()) as AutocompleteResponse;
+  const params = new URLSearchParams();
+
+  params.set("text", value);
+
+  params.set("format", "json");
+
+  params.set("limit", "8");
+
+  params.set("lang", "en");
+
+
+  params.set(
+    "filter",
+    "countrycode:in",
+  );
+
+  if (pickup) {
+    params.set(
+      "bias",
+      `proximity:${pickup.lng},${pickup.lat}`,
+    );
+  }
+
+  params.set(
+    "apiKey",
+    GEOAPIFY_API_KEY,
+  );
+
+  const response = await fetch(
+    `${GEOAPIFY_BASE_URL}/geocode/autocomplete?${params.toString()}`,
+  );
+
+  if (!response.ok) {
+    let message =
+      "Unable to search locations";
+
+    try {
+      const error =
+        (await response.json()) as {
+          message?: string;
+        };
+
+      if (error.message) {
+        message = error.message;
+      }
+    } catch {
+     
+    }
+
+    throw new Error(message);
+  }
+
+  const data =
+    (await response.json()) as GeoapifyAutocompleteResponse;
 
   return (
-    data.suggestions
-      ?.filter((suggestion) => suggestion.placePrediction)
-      .map((suggestion) => {
-        const prediction = suggestion.placePrediction!;
+  data.results
+    ?.filter(
+      (result) =>
+        Number.isFinite(result.lat) &&
+        Number.isFinite(result.lon),
+    )
+    .map((result) => ({
+      placeId:
+        result.place_id ??
+        `${result.lat}-${result.lon}`,
 
-        return {
-          placeId: prediction.placeId,
+      name:
+        result.name ??
+        result.address_line1 ??
+        result.formatted ??
+        "Unknown place",
 
-          name: prediction.structuredFormat?.mainText?.text ?? prediction.text?.text ?? "",
+      description:
+        result.formatted ??
+        [
+          result.address_line2,
+          result.city,
+          result.state,
+        ]
+          .filter(Boolean)
+          .join(", "),
 
-          description: prediction.structuredFormat?.secondaryText?.text ?? "",
-        };
-      }) ?? []
-  );
+      lat: result.lat,
+      lng: result.lon,
+
+      category:
+        result.category ??
+        "place",
+    })) ?? []
+);
 }
 
-export async function getPlaceDetails(placeId: string, sessionToken: string) {
-  const response = await fetch(`${GOOGLE_PLACES_URL}/places/${placeId}`, {
-    headers: {
-      "Content-Type": "application/json",
 
-      "X-Goog-Api-Key": API_KEY,
-
-      "X-Goog-FieldMask": "id,displayName,formattedAddress,location",
-
-      "X-Goog-Session-Token": sessionToken,
-    },
+export async function reverseGeocode(
+  location: CurrentLocation,
+): Promise<ReverseGeocodeResult | null> {
+  const params = new URLSearchParams({
+    lat: String(location.lat),
+    lon: String(location.lng),
+    format: "json",
+    apiKey: GEOAPIFY_API_KEY,
   });
 
-  if (!response.ok) {
-    const error = await response.text();
+  const response = await fetch(
+    `${GEOAPIFY_BASE_URL}/geocode/reverse?${params.toString()}`,
+  );
 
-    throw new Error(error || "Failed to get place details");
+  if (!response.ok) {
+    throw new Error(
+      "Unable to determine current location",
+    );
   }
 
-  return (await response.json()) as PlaceDetailsResponse;
+  const data = await response.json();
+
+  return data.results?.[0] ?? null;
 }

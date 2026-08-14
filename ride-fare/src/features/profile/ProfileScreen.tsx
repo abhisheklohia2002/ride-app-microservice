@@ -26,7 +26,7 @@ export function ProfileScreen() {
   const queryClient = useQueryClient();
   const userInfo = useAuthStore((s) => s.user);
 
-  const profileQuery = useQuery({ queryKey: queryKeys.profile.detail, queryFn: profileApi.get });
+  // const profileQuery = useQuery({ queryKey: queryKeys.profile.detail, queryFn: profileApi.get });
   // const settingsQuery = useQuery({
   //   queryKey: queryKeys.profile.settings,
   //   queryFn: profileApi.settings,
@@ -45,7 +45,7 @@ export function ProfileScreen() {
     },
   });
 
-  const user = profileQuery.data;
+  // const user = profileQuery.data;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -54,15 +54,14 @@ export function ProfileScreen() {
       </header>
 
       <div className="flex-1 space-y-4 px-5 py-5">
-        {profileQuery.isPending || !user ? (
-          <Loader className="py-10" />
-        ) : (
+        {(
           <div className="flex items-center gap-4 rounded-3xl border border-border bg-elevated p-4">
             <UserAvatar name={userInfo?.full_name ?? ""} size="lg" />
             <div className="min-w-0">
               <p className="truncate text-[17px] font-semibold text-foreground">{userInfo?.full_name ?? ""}</p>
               <p className="truncate text-[13px] text-muted-foreground">{userInfo?.email}</p>
-              <p className="truncate text-[13px] text-muted-foreground">{userInfo?.role}</p>
+              <p className="truncate text-[13px] text-muted-foreground">{userInfo?.phone}</p>
+              <p className="truncate text-[13px] text-muted-foreground">{userInfo?.role.toLocaleUpperCase()}</p>
 
               <p className="mt-1 flex items-center gap-1 text-[13px] text-muted-foreground">
                 <Star className="h-3 w-3 fill-primary text-primary" /> {"9"} rating
