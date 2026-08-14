@@ -26,6 +26,7 @@ type CustomClaims struct {
 	Email     string `json:"email"`
 	Role      string `json:"role"`
 	FullName  string `json:"full_name"`
+	Phone     string `json:"phone"`
 	TokenType string `json:"token_type"`
 	jwt.RegisteredClaims
 }
@@ -45,6 +46,8 @@ func (s *TokenServiceImpl) GenerateAccessToken(user *models.User) (string, error
 		UserID:    user.ID,
 		Email:     user.Email,
 		Role:      user.Role,
+		FullName:  user.FullName,
+		Phone:     user.Phone,
 		TokenType: "access",
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    s.issuer,
@@ -68,6 +71,8 @@ func (s *TokenServiceImpl) GenerateRefreshToken(user *models.User) (string, erro
 		UserID:    user.ID,
 		Email:     user.Email,
 		Role:      user.Role,
+		FullName:  user.FullName,
+		Phone:     user.Phone,
 		TokenType: "refresh",
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    s.issuer,

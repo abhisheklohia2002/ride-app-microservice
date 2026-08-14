@@ -30,7 +30,7 @@ export interface AuthTokens {
 
 export interface User {
   id: string;
-  fullName: string;
+  full_Name: string;
   email: string;
   phone: string;
   avatarUrl?: string | undefined;
@@ -48,7 +48,6 @@ export interface EmergencyContact {
 
 export interface AuthSession {
   user: User;
-  tokens: AuthTokens;
 }
 
 export interface LatLng {

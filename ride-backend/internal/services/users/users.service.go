@@ -64,7 +64,8 @@ func (s *UserServiceImpl) Register(req dto.RegisterUserRequest) (*dto.RegisterUs
 		FullName:     fullName,
 		Email:        email,
 		PasswordHash: string(hashedPassword),
-		Role:         "customer",
+		Role:         req.Role,
+		Phone:        req.Phone,
 	}
 
 	savedUser, err := s.repo.Create(&user)
@@ -98,6 +99,7 @@ func (s *UserServiceImpl) Register(req dto.RegisterUserRequest) (*dto.RegisterUs
 			FullName: savedUser.FullName,
 			Email:    savedUser.Email,
 			Role:     savedUser.Role,
+			Phone:    savedUser.Phone,
 		},
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -148,6 +150,7 @@ func (s *UserServiceImpl) Login(req dto.LoginRequest) (*dto.AuthResponse, error)
 			FullName: user.FullName,
 			Email:    user.Email,
 			Role:     user.Role,
+			Phone:    user.Phone,
 		},
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -165,6 +168,7 @@ func (s *UserServiceImpl) Self(userID uint) (*dto.AuthUserResponse, error) {
 		FullName: user.FullName,
 		Email:    user.Email,
 		Role:     user.Role,
+		Phone:    user.Phone,
 	}, nil
 }
 
@@ -242,6 +246,7 @@ func (s *UserServiceImpl) Refresh(refreshToken string) (*dto.AuthResponse, error
 			FullName: user.FullName,
 			Email:    user.Email,
 			Role:     user.Role,
+			Phone:    user.Phone,
 		},
 		AccessToken:  newAccessToken,
 		RefreshToken: newRefreshToken,
@@ -258,5 +263,6 @@ func (s *UserServiceImpl) UpdateUser(userID uint) (*dto.AuthUserResponse, error)
 		FullName: user.FullName,
 		Email:    user.Email,
 		Role:     user.Role,
+		Phone:    user.Phone,
 	}, nil
 }

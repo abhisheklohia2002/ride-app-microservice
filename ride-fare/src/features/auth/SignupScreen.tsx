@@ -13,8 +13,9 @@ export function SignupScreen() {
   const [form, setForm] = useState({
     fullName: "Aarav Mehta",
     email: "aarav@ridex.app",
-    phone: "+91 98450 21188",
+    phone: "9845021188",
     password: "ridex1234",
+    role:"customer"
   });
 
   const register = useMutation({
@@ -32,6 +33,7 @@ export function SignupScreen() {
     { key: "email" as const, icon: Mail, placeholder: "Email address", type: "email" },
     { key: "phone" as const, icon: Phone, placeholder: "Phone number", type: "tel" },
     { key: "password" as const, icon: Lock, placeholder: "Password", type: "password" },
+    
   ];
 
   return (

@@ -9,12 +9,9 @@ import type { ApiErrorShape, ApiResponse, AuthTokens } from "@/types";
 import { mockAdapter } from "./mock/adapter";
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "./token-store";
 
-export const API_BASE_URL = import.meta.env["VITE_API_BASE_URL"] ?? "/api/v1";
+export const API_BASE_URL = import.meta.env["VITE_API_BASE_URL"] ?? "/api";
 export const API_TIMEOUT_MS = Number(import.meta.env["VITE_API_TIMEOUT_MS"] ?? 15000);
-/**
- * Flip VITE_USE_MOCK_API to "false" once the Golang service is reachable.
- * Nothing else in the app needs to change.
- */
+
 export const USE_MOCK_API = String(import.meta.env["VITE_USE_MOCK_API"] ?? "true") !== "false";
 
 export class ApiError extends Error implements ApiErrorShape {
@@ -47,8 +44,6 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
-/* ---------------------------- response pipeline --------------------------- */
-
 type RetriableConfig = InternalAxiosRequestConfig & { _retried?: boolean };
 
 let refreshPromise: Promise<AuthTokens> | null = null;
@@ -69,7 +64,8 @@ async function refreshAccessToken(): Promise<AuthTokens> {
   if (!refreshPromise) {
     const token = getRefreshToken();
     refreshPromise = (async () => {
-      if (!token) throw new ApiError({ status: 401, code: "no_refresh_token", message: "Session expired." });
+      if (!token)
+        throw new ApiError({ status: 401, code: "no_refresh_token", message: "Session expired." });
       const response = await axios.request<ApiResponse<AuthTokens>>({
         baseURL: API_BASE_URL,
         url: "/auth/refresh",
@@ -91,7 +87,9 @@ async function refreshAccessToken(): Promise<AuthTokens> {
 function toApiError(error: unknown): ApiError {
   if (error instanceof ApiError) return error;
   if (axios.isAxiosError(error)) {
-    const axiosError = error as AxiosError<ApiResponse<{ code?: string; fieldErrors?: Record<string, string> }>>;
+    const axiosError = error as AxiosError<
+      ApiResponse<{ code?: string; fieldErrors?: Record<string, string> }>
+    >;
     if (axiosError.code === "ECONNABORTED" || axiosError.code === "ETIMEDOUT") {
       return new ApiError({
         status: 408,

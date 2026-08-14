@@ -9,15 +9,14 @@ import { useAuthStore } from "@/store/auth.store";
 
 export function LoginScreen() {
   const navigate = useNavigate();
-  const setSession = useAuthStore((s) => s.setSession);
   const [email, setEmail] = useState("aarav@ridex.app");
   const [password, setPassword] = useState("ridex1234");
 
   const login = useMutation({
     mutationFn: () => authApi.login({ email, password }),
     onSuccess: (session) => {
-      setSession(session);
-      toast.success(`Welcome back, ${session.user.fullName.split(" ")[0]}`);
+      console.log(session?.full_name,'sessions')
+      toast.success(`Welcome back, ${session.full_name}`);
       void navigate({ to: "/" });
     },
     onError: (error: Error) => toast.error(error.message || "Could not sign you in"),

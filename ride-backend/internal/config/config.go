@@ -21,6 +21,7 @@ type Config struct {
 	DBUSER          string
 	DBPASSWORD      string
 	DBNAME          string
+	CLIENT_URL      string
 }
 
 func findSecret(key string) string {
@@ -57,5 +58,6 @@ func MustLoad() *Config {
 		DBUSER:          findSecret("DB_USERNAME"),
 		DBPASSWORD:      findSecret("DB_PASSWORD"),
 		DBNAME:          findSecret("DB_NAME"),
+		CLIENT_URL:      findSecret("CLIENT_URL"),
 	}
 }
