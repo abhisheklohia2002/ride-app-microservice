@@ -12,6 +12,7 @@ type RefreshTokenRepository interface {
 	FindByToken(token string) (*models.RefreshToken, error)
 	Revoke(token string) error
 	DeleteExpired() error
+	DeleteTokensByUserID(userId uint) error
 }
 
 type RefreshTokenRepositoryImpl struct {
@@ -60,4 +61,10 @@ func (r *RefreshTokenRepositoryImpl) DeleteExpired() error {
 		Where("expires_at < NOW()").
 		Delete(&models.RefreshToken{}).
 		Error
+}
+
+func (r *RefreshTokenRepositoryImpl) DeleteTokensByUserID(userID uint) error {
+	return r.db.
+		Where("user_id = ?", userID).
+		Delete(&models.RefreshToken{}).Error
 }

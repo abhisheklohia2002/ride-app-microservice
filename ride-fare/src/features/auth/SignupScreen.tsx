@@ -23,7 +23,7 @@ export function SignupScreen() {
     onSuccess: (result) => {
       setPendingPhone(result.phone);
       toast.success("We sent a 6-digit code to your phone");
-      void navigate({ to: "/verify-otp" });
+      void navigate({ to: "/" });
     },
     onError: (error: Error) => toast.error(error.message || "Could not create your account"),
   });

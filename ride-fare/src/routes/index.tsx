@@ -1,8 +1,21 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { HomeScreen } from "@/features/home/HomeScreen";
+import { authApi } from "@/api/auth.api";
+
 
 export const Route = createFileRoute("/")({
+  beforeLoad: async () => {
+  try {
+    const user = await authApi.me();
+
+    return { user };
+  } catch {
+    return {
+      user: null,
+    };
+  }
+},
   head: () => ({
     meta: [
       { title: "RideX — Book a ride in seconds" },

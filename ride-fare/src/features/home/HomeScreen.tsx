@@ -24,6 +24,8 @@ import type { Place } from "@/types";
 import { nearbyDrivers } from "@/api/mock/db";
 import { formatCurrency, formatRelativeDay } from "@/utils/format";
 import { toast } from "sonner";
+import { authApi } from "@/api/auth.api";
+import { useAuthStore } from "@/store/auth.store";
 
 export function HomeScreen() {
   const navigate = useNavigate();
@@ -34,11 +36,13 @@ export function HomeScreen() {
       to: "/confirm-ride",
     });
   };
+  const setUser = useAuthStore((state) => state.setUser);
 
-  // --------------------------------------------------
-  // Queries
-  // --------------------------------------------------
-
+const meQuery = useQuery({
+  queryKey: ["auth", "me"],
+  queryFn: authApi.me,
+  retry: false,
+});
   const savedQuery = useQuery({
     queryKey: queryKeys.locations.saved,
     queryFn: locationApi.savedPlaces,
@@ -106,6 +110,12 @@ export function HomeScreen() {
       setIsOpen(false);
     }
   };
+
+  useEffect(() => {
+  if (meQuery.data) {
+    setUser(meQuery?.data);
+  }
+}, [meQuery.data, setUser]);
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -264,9 +274,6 @@ export function HomeScreen() {
           />
         </motion.div>
 
-        {/* =================================================
-            SHEET CONTENT
-        ================================================== */}
 
         <div
           className={`
@@ -280,9 +287,7 @@ export function HomeScreen() {
             ${isOpen ? "opacity-100" : "pointer-events-none opacity-0"}
           `}
         >
-          {/* -----------------------------------------------
-              SEARCH
-          ------------------------------------------------ */}
+
 
           <section>
             <h1

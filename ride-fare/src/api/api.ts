@@ -30,7 +30,8 @@ export class ApiError extends Error implements ApiErrorShape {
 
 export const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: API_TIMEOUT_MS,
+  // timeout: API_TIMEOUT_MS,
+   withCredentials: true,
   headers: { "Content-Type": "application/json", Accept: "application/json" },
   ...(USE_MOCK_API ? { adapter: mockAdapter } : {}),
 });

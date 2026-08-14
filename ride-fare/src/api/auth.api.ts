@@ -1,5 +1,5 @@
 import { http } from "./api";
-import type { AuthSession, AuthTokens, User } from "@/types";
+import type { AuthSession, AuthTokens, User, UserResponse } from "@/types";
 
 export interface LoginPayload {
   email: string;
@@ -48,5 +48,5 @@ export const authApi = {
     http.post<{ ok: boolean }>("/auth/logout"),
 
   me: () =>
-    http.get<User>("/auth/me"),
+    http.get<UserResponse>("/auth/me"),
 };

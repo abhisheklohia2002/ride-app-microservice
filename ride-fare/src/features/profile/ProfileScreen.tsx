@@ -13,34 +13,33 @@ import { Switch } from "@/components/ui/switch";
 import { useAuthStore } from "@/store/auth.store";
 import type { AppSettings } from "@/types";
 
-const SETTING_LABELS: Array<{ key: keyof AppSettings; label: string; hint: string }> = [
-  { key: "pushNotifications", label: "Push notifications", hint: "Offers and account alerts" },
-  { key: "rideUpdates", label: "Ride updates", hint: "Captain arrival and trip status" },
-  { key: "promotions", label: "Promotions", hint: "Discounts and referral news" },
-  { key: "shareTripData", label: "Share trip data", hint: "Live location with emergency contact" },
-  { key: "biometricLock", label: "Biometric lock", hint: "Require Face ID to open RideX" },
-];
+// const SETTING_LABELS: Array<{ key: keyof AppSettings; label: string; hint: string }> = [
+//   { key: "pushNotifications", label: "Push notifications", hint: "Offers and account alerts" },
+//   { key: "rideUpdates", label: "Ride updates", hint: "Captain arrival and trip status" },
+//   { key: "promotions", label: "Promotions", hint: "Discounts and referral news" },
+//   { key: "shareTripData", label: "Share trip data", hint: "Live location with emergency contact" },
+//   { key: "biometricLock", label: "Biometric lock", hint: "Require Face ID to open RideX" },
+// ];
 
 export function ProfileScreen() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const clearSession = useAuthStore((s) => s.clearSession);
+  const userInfo = useAuthStore((s) => s.user);
 
   const profileQuery = useQuery({ queryKey: queryKeys.profile.detail, queryFn: profileApi.get });
-  const settingsQuery = useQuery({
-    queryKey: queryKeys.profile.settings,
-    queryFn: profileApi.settings,
-  });
+  // const settingsQuery = useQuery({
+  //   queryKey: queryKeys.profile.settings,
+  //   queryFn: profileApi.settings,
+  // });
 
-  const updateSettings = useMutation({
-    mutationFn: (payload: Partial<AppSettings>) => profileApi.updateSettings(payload),
-    onSuccess: (settings) => queryClient.setQueryData(queryKeys.profile.settings, settings),
-  });
+  // const updateSettings = useMutation({
+  //   mutationFn: (payload: Partial<AppSettings>) => profileApi.updateSettings(payload),
+  //   onSuccess: (settings) => queryClient.setQueryData(queryKeys.profile.settings, settings),
+  // });
 
   const logout = useMutation({
     mutationFn: () => authApi.logout(),
     onSuccess: () => {
-      clearSession();
       toast.success("Signed out");
       void navigate({ to: "/login" });
     },
@@ -59,18 +58,20 @@ export function ProfileScreen() {
           <Loader className="py-10" />
         ) : (
           <div className="flex items-center gap-4 rounded-3xl border border-border bg-elevated p-4">
-            <UserAvatar name={user.fullName} size="lg" />
+            <UserAvatar name={userInfo?.full_name ?? ""} size="lg" />
             <div className="min-w-0">
-              <p className="truncate text-[17px] font-semibold text-foreground">{user.fullName}</p>
-              <p className="truncate text-[13px] text-muted-foreground">{user.email}</p>
+              <p className="truncate text-[17px] font-semibold text-foreground">{userInfo?.full_name ?? ""}</p>
+              <p className="truncate text-[13px] text-muted-foreground">{userInfo?.email}</p>
+              <p className="truncate text-[13px] text-muted-foreground">{userInfo?.role}</p>
+
               <p className="mt-1 flex items-center gap-1 text-[13px] text-muted-foreground">
-                <Star className="h-3 w-3 fill-primary text-primary" /> {user.rating} rating
+                <Star className="h-3 w-3 fill-primary text-primary" /> {"9"} rating
               </p>
             </div>
           </div>
         )}
 
-        <div className="rounded-3xl border border-border bg-elevated p-2">
+        {/* <div className="rounded-3xl border border-border bg-elevated p-2">
           {settingsQuery.data
             ? SETTING_LABELS.map((item) => (
                 <div key={item.key} className="flex items-center gap-3 px-3 py-3">
@@ -85,7 +86,7 @@ export function ProfileScreen() {
                 </div>
               ))
             : <Loader className="py-6" />}
-        </div>
+        </div> */}
 
         <button
           type="button"

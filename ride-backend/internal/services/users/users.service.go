@@ -134,6 +134,10 @@ func (s *UserServiceImpl) Login(req dto.LoginRequest) (*dto.AuthResponse, error)
 		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
 
+	errToken := s.refreshTokenRepo.DeleteTokensByUserID(user.ID)
+	if errToken != nil {
+		return nil, errors.New("failed to Delete refresh token")
+	}
 	refreshTokenRecord := models.RefreshToken{
 		Token:     refreshToken,
 		UserID:    user.ID,

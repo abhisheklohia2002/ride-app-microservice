@@ -40,6 +40,14 @@ export interface User {
   language: string;
 }
 
+export interface UserResponse {
+  id: number;
+  full_name: string;
+  role: string;
+  phone: string;
+  email: string;
+}
+
 export interface EmergencyContact {
   name: string;
   phone: string;
