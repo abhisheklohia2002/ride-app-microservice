@@ -255,7 +255,6 @@ export function ConfirmRideScreen() {
   "
         pickup={pickup?.coords}
         destination={destination?.coords}
-        polyline={routeQuery.data?.geometry ?? []}
       />
 
       {/* =================================================

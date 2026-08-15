@@ -318,7 +318,6 @@ export function RideTrackingScreen() {
           h-full
           w-full
         "
-        polyline={status === "in_progress" ? polyline : approach}
         pickup={ride.pickup.coords}
         destination={ride.destination.coords}
         vehicles={
@@ -332,7 +331,6 @@ export function RideTrackingScreen() {
               ]
             : []
         }
-        showRadar={status === "arrived"}
       />
 
       {/* =================================================

@@ -64,6 +64,132 @@ export function SearchScreen() {
    * pickup
    */
 
+useEffect(() => {
+  if (pickup) {
+    setLocationLoading(false);
+    return;
+  }
+
+  if (!navigator.geolocation) {
+    toast.error(
+      "Geolocation is not supported by your browser",
+    );
+
+    setLocationLoading(false);
+    return;
+  }
+
+  let cancelled = false;
+
+  setLocationLoading(true);
+
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      if (cancelled) {
+        return;
+      }
+
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      try {
+        const address = await reverseGeocode({
+          lat,
+          lng,
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        setPickup({
+          id: `current-location-${lat}-${lng}`,
+          name: "Current location",
+          address:
+            address?.formatted ??
+            "Current location",
+          category: "home",
+          coords: {
+            lat,
+            lng,
+          },
+        });
+      } catch (error) {
+        console.error(
+          "Reverse geocoding failed:",
+          error,
+        );
+
+        if (!cancelled) {
+          setPickup({
+            id: `current-location-${lat}-${lng}`,
+            name: "Current location",
+            address: "Current location",
+            category: "home",
+            coords: {
+              lat,
+              lng,
+            },
+          });
+        }
+      } finally {
+        if (!cancelled) {
+          setLocationLoading(false);
+        }
+      }
+    },
+
+    (error) => {
+      if (cancelled) {
+        return;
+      }
+
+      console.error(
+        "Geolocation error:",
+        error,
+      );
+
+      setLocationLoading(false);
+
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          toast.error(
+            "Please allow location access",
+          );
+          break;
+
+        case error.POSITION_UNAVAILABLE:
+          toast.error(
+            "Your current location is unavailable",
+          );
+          break;
+
+        case error.TIMEOUT:
+          toast.error(
+            "Location request timed out",
+          );
+          break;
+
+        default:
+          toast.error(
+            "Unable to get your current location",
+          );
+      }
+    },
+
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 30000,
+    },
+  );
+
+  return () => {
+    cancelled = true;
+  };
+}, [pickup, setPickup]);
+
+
   useEffect(() => {
     /*
      * If pickup already exists, don't request
