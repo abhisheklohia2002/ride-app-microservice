@@ -15,12 +15,17 @@ import (
 	"github.com/ride-app/internal/models"
 	refreshRepository "github.com/ride-app/internal/repository/refresh_tokens"
 	userRepository "github.com/ride-app/internal/repository/users"
+	vehicleRepository "github.com/ride-app/internal/repository/vehicles"
+
 	"github.com/ride-app/internal/routes"
 
 	tokenService "github.com/ride-app/internal/services/token"
 	userService "github.com/ride-app/internal/services/users"
+	vehicleService "github.com/ride-app/internal/services/vehicle"
 
 	userHandles "github.com/ride-app/internal/handlers/users"
+	vehicleHandles "github.com/ride-app/internal/handlers/vehicle"
+
 )
 
 func main() {
@@ -107,6 +112,7 @@ func main() {
 	userRepo := userRepository.NewUserRepository(database)
 
 	refreshRepo := refreshRepository.NewRefreshTokenRepository(database)
+	vehicleRepo := vehicleRepository.NewVehicleRepository(database)
 
 	// Services
 	tokenSvc := tokenService.NewTokenService(
@@ -121,11 +127,13 @@ func main() {
 		refreshRepo,
 	)
 
+	vehicleSvc := vehicleService.NewVehicleService(vehicleRepo)
+
 	// Handlers
 	userHandler := userHandles.NewUserHandler(userSvc)
-
+	vehicleHandler := vehicleHandles.NewVehicleHandlers(vehicleSvc)
 	// Routes
-	routes.Routes(r, userHandler)
+	routes.Routes(r, userHandler,vehicleHandler)
 
 	// Start server
 	addr := ":" + cfg.PORT

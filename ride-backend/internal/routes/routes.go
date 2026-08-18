@@ -3,10 +3,11 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/ride-app/internal/handlers/users"
+	"github.com/ride-app/internal/handlers/vehicle"
 	middleware "github.com/ride-app/internal/middleware"
 )
 
-func Routes(router *gin.Engine, userhandler users.UserHandler) {
+func Routes(router *gin.Engine, userhandler users.UserHandler, vehicleHandler vehicle.Vehicle) {
 	api := router.Group("/api")
 
 	auth := api.Group("/auth")
@@ -21,5 +22,15 @@ func Routes(router *gin.Engine, userhandler users.UserHandler) {
 	protected.Use(middleware.AuthMiddleware())
 	{
 		protected.GET("/auth/me", userhandler.Self)
+	}
+
+	vehicle := api.Group("/vehicle")
+	{
+		vehicle.POST("/", vehicleHandler.Create)
+		vehicle.GET("/", vehicleHandler.GetAll)
+		vehicle.GET("/:id", vehicleHandler.GetByID)
+		vehicle.PUT("/:id", vehicleHandler.Update)
+		vehicle.DELETE("/:id", vehicleHandler.Delete)
+
 	}
 }
