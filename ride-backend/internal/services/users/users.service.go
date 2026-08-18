@@ -66,6 +66,7 @@ func (s *UserServiceImpl) Register(req dto.RegisterUserRequest) (*dto.RegisterUs
 		PasswordHash: string(hashedPassword),
 		Role:         req.Role,
 		Phone:        req.Phone,
+		
 	}
 
 	savedUser, err := s.repo.Create(&user)

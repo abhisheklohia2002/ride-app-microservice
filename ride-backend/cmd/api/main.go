@@ -79,9 +79,7 @@ func main() {
 	if err := database.AutoMigrate(
 		&models.User{},
 		&models.RefreshToken{},
-		&models.Driver{},
 		&models.Vehicle{},
-		&models.Booking{},
 	); err != nil {
 		log.Fatalf("Database migration failed: %v", err)
 	}
