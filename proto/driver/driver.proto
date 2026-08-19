@@ -12,6 +12,34 @@ service DriverService {
     rpc Login(LoginUserRequest) returns (UserResponse);
     rpc Self(google.protobuf.Empty) returns (UserResponse);
 }
+
+message Vehicle{
+     int64 id = 1;
+     int64 userId = 2;
+     string fullName = 3;
+     string plateNumber = 4;
+     bool  status = 5;
+}
+
+message CreateRequestVehicle{
+     int64 userId = 1;
+     string fullName = 2;
+     string plateNumber = 3;
+     bool  status = 4;
+}
+
+message UpdateRequestVehicle{
+     int64 id = 1;
+     int64 userId = 2;
+     string fullName = 3;
+     string plateNumber = 4;
+     bool  status = 5;
+}
+
+message VehicleResponse {
+    Vehicle vehicle = 1;
+}
+
 message Driver {
      int64 id = 1;
      string fullname = 2;

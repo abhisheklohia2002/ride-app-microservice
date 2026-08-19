@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	driver "github.com/ride-api-gateway/internal/driver"
 	grpcDriverClient "github.com/ride-api-gateway/internal/grpc/driver"
 )
 
@@ -23,7 +24,7 @@ func main() {
 
 	slog.SetDefault(logger)
 	mux := http.NewServeMux()
-
+	mux.HandleFunc("POST /register/driver", driver.HandleCreateDriver)
 	log.Fatal(http.ListenAndServe(":8080", mux))
 
 }
