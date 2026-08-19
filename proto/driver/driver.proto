@@ -1,0 +1,49 @@
+syntax="proto3";
+
+import "google/protobuf/empty.proto";
+
+package driverService;
+option go_package = "./shared/pkg/driver";
+
+
+
+service DriverService {
+    rpc Register(CreateRequestDriver) returns (UserResponse);
+    rpc Login(LoginUserRequest) returns (UserResponse);
+    rpc Self(google.protobuf.Empty) returns (UserResponse);
+}
+message Driver {
+     int64 id = 1;
+     string fullname = 2;
+     string email = 3;
+     int64 phone = 4;
+     string role = 5;
+}
+
+message CreateRequestDriver{
+    string fullname = 1;
+    string email = 2;
+     int64 phone = 3;
+    string password = 4;
+    string role = 5;
+}
+message UpdateRequestDriver{
+    string fullname = 1;
+    string email = 2;
+    int64 phone = 3;
+    string password = 4;
+    string role = 5;
+    int64 id = 6;
+}
+
+message LoginUserRequest{
+   string email = 1;
+   string password = 2;
+}
+
+
+message UserResponse{
+Driver diver = 1;
+string access_token = 2;
+string refresh_token = 3;
+}

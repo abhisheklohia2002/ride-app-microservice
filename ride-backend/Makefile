@@ -5,3 +5,6 @@ run-dev:
 
 run-test:
 	@ENV_FILE=.env.test go run ./cmd/api
+
+proto-run-driver:
+	protoc --go_out=. --go-grpc_out=. proto/driver/driver.proto

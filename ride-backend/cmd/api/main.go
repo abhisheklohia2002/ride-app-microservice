@@ -25,7 +25,6 @@ import (
 
 	userHandles "github.com/ride-app/internal/handlers/users"
 	vehicleHandles "github.com/ride-app/internal/handlers/vehicle"
-
 )
 
 func main() {
@@ -99,9 +98,8 @@ func main() {
 	// JWKS
 	r.StaticFile(
 		"/.well-known/jwks.json",
-		"./public/.well-known/jwks.json",
+		"../public/.well-known/jwks.json",
 	)
-
 	// JWT
 	privateKey, err := auth.LoadRSAPrivateKeyFromEnv("JWT_PRIVATE_KEY")
 	if err != nil {
@@ -133,7 +131,7 @@ func main() {
 	userHandler := userHandles.NewUserHandler(userSvc)
 	vehicleHandler := vehicleHandles.NewVehicleHandlers(vehicleSvc)
 	// Routes
-	routes.Routes(r, userHandler,vehicleHandler)
+	routes.Routes(r, userHandler, vehicleHandler)
 
 	// Start server
 	addr := ":" + cfg.PORT
