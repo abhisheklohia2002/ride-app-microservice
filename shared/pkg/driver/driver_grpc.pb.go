@@ -20,7 +20,9 @@ const _ = grpc.SupportPackageIsVersion7
 type DriverServiceClient interface {
 	Register(ctx context.Context, in *CreateRequestDriver, opts ...grpc.CallOption) (*UserResponse, error)
 	Login(ctx context.Context, in *LoginUserRequest, opts ...grpc.CallOption) (*UserResponse, error)
-	Self(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UserResponse, error)
+	Self(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UserSelfResponse, error)
+	Logout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Refresh(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UserResponse, error)
 }
 
 type driverServiceClient struct {
@@ -49,9 +51,27 @@ func (c *driverServiceClient) Login(ctx context.Context, in *LoginUserRequest, o
 	return out, nil
 }
 
-func (c *driverServiceClient) Self(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UserResponse, error) {
-	out := new(UserResponse)
+func (c *driverServiceClient) Self(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UserSelfResponse, error) {
+	out := new(UserSelfResponse)
 	err := c.cc.Invoke(ctx, "/driverService.DriverService/Self", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *driverServiceClient) Logout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/driverService.DriverService/Logout", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *driverServiceClient) Refresh(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UserResponse, error) {
+	out := new(UserResponse)
+	err := c.cc.Invoke(ctx, "/driverService.DriverService/Refresh", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +84,9 @@ func (c *driverServiceClient) Self(ctx context.Context, in *emptypb.Empty, opts 
 type DriverServiceServer interface {
 	Register(context.Context, *CreateRequestDriver) (*UserResponse, error)
 	Login(context.Context, *LoginUserRequest) (*UserResponse, error)
-	Self(context.Context, *emptypb.Empty) (*UserResponse, error)
+	Self(context.Context, *emptypb.Empty) (*UserSelfResponse, error)
+	Logout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	Refresh(context.Context, *emptypb.Empty) (*UserResponse, error)
 	mustEmbedUnimplementedDriverServiceServer()
 }
 
@@ -78,8 +100,14 @@ func (UnimplementedDriverServiceServer) Register(context.Context, *CreateRequest
 func (UnimplementedDriverServiceServer) Login(context.Context, *LoginUserRequest) (*UserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
 }
-func (UnimplementedDriverServiceServer) Self(context.Context, *emptypb.Empty) (*UserResponse, error) {
+func (UnimplementedDriverServiceServer) Self(context.Context, *emptypb.Empty) (*UserSelfResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Self not implemented")
+}
+func (UnimplementedDriverServiceServer) Logout(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Logout not implemented")
+}
+func (UnimplementedDriverServiceServer) Refresh(context.Context, *emptypb.Empty) (*UserResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Refresh not implemented")
 }
 func (UnimplementedDriverServiceServer) mustEmbedUnimplementedDriverServiceServer() {}
 
@@ -148,6 +176,42 @@ func _DriverService_Self_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DriverService_Logout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DriverServiceServer).Logout(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/driverService.DriverService/Logout",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DriverServiceServer).Logout(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DriverService_Refresh_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DriverServiceServer).Refresh(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/driverService.DriverService/Refresh",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DriverServiceServer).Refresh(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _DriverService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "driverService.DriverService",
 	HandlerType: (*DriverServiceServer)(nil),
@@ -163,6 +227,14 @@ var _DriverService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Self",
 			Handler:    _DriverService_Self_Handler,
+		},
+		{
+			MethodName: "Logout",
+			Handler:    _DriverService_Logout_Handler,
+		},
+		{
+			MethodName: "Refresh",
+			Handler:    _DriverService_Refresh_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

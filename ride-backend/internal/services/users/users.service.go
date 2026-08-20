@@ -1,6 +1,7 @@
 package users
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -16,9 +17,9 @@ import (
 )
 
 type UserService interface {
-	Register(req dto.RegisterUserRequest) (*dto.RegisterUserResponse, error)
-	Login(req dto.LoginRequest) (*dto.AuthResponse, error)
-	Self(userID uint) (*dto.AuthUserResponse, error)
+	Register(ctx context.Context, req dto.RegisterUserRequest) (*dto.RegisterUserResponse, error)
+	Login(ctx context.Context, req dto.LoginRequest) (*dto.AuthResponse, error)
+	Self(userID uint64) (*dto.AuthUserResponse, error)
 	Logout(refreshToken string) error
 	Refresh(refreshToken string) (*dto.AuthResponse, error)
 	UpdateUser(userID uint) (*dto.AuthUserResponse, error)
@@ -42,7 +43,7 @@ func NewUserService(
 	}
 }
 
-func (s *UserServiceImpl) Register(req dto.RegisterUserRequest) (*dto.RegisterUserResponse, error) {
+func (s *UserServiceImpl) Register(ctx context.Context, req dto.RegisterUserRequest) (*dto.RegisterUserResponse, error) {
 	email := strings.ToLower(strings.TrimSpace(req.Email))
 	fullName := strings.TrimSpace(req.FullName)
 
@@ -66,10 +67,9 @@ func (s *UserServiceImpl) Register(req dto.RegisterUserRequest) (*dto.RegisterUs
 		PasswordHash: string(hashedPassword),
 		Role:         req.Role,
 		Phone:        req.Phone,
-		
 	}
 
-	savedUser, err := s.repo.Create(&user)
+	savedUser, err := s.repo.Create(ctx, &user)
 	if err != nil {
 		return nil, errors.New("failed to create user")
 	}
@@ -109,7 +109,7 @@ func (s *UserServiceImpl) Register(req dto.RegisterUserRequest) (*dto.RegisterUs
 	return response, nil
 }
 
-func (s *UserServiceImpl) Login(req dto.LoginRequest) (*dto.AuthResponse, error) {
+func (s *UserServiceImpl) Login(ctx context.Context, req dto.LoginRequest) (*dto.AuthResponse, error) {
 	email := strings.ToLower(strings.TrimSpace(req.Email))
 
 	user, err := s.repo.FindByEmail(email)
@@ -162,7 +162,7 @@ func (s *UserServiceImpl) Login(req dto.LoginRequest) (*dto.AuthResponse, error)
 	}, nil
 }
 
-func (s *UserServiceImpl) Self(userID uint) (*dto.AuthUserResponse, error) {
+func (s *UserServiceImpl) Self(userID uint64) (*dto.AuthUserResponse, error) {
 	user, err := s.repo.FindByID(userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user: %w", err)
@@ -216,7 +216,7 @@ func (s *UserServiceImpl) Refresh(refreshToken string) (*dto.AuthResponse, error
 		return nil, errors.New("refresh token expired")
 	}
 
-	user, err := s.repo.FindByID(claims.UserID)
+	user, err := s.repo.FindByID(uint64(claims.UserID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}

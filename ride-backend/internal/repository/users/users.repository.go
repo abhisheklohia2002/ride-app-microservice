@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 
 	"github.com/ride-app/internal/models"
@@ -8,9 +9,9 @@ import (
 )
 
 type UserRepository interface {
-	Create(user *models.User) (*models.User, error)
+	Create(ctx context.Context, user *models.User) (*models.User, error)
 	FindByEmail(email string) (*models.User, error)
-	FindByID(id uint) (*models.User, error)
+	FindByID(id uint64) (*models.User, error)
 	SearchUsers(query string, excludeUserID uint) ([]models.User, error)
 	UpdateUserById(id uint) (*models.User, error)
 }
@@ -25,8 +26,8 @@ func NewUserRepository(db *gorm.DB) UserRepository {
 	}
 }
 
-func (r *UserRepositoryImpl) Create(user *models.User) (*models.User, error) {
-	if err := r.db.Create(user).Error; err != nil {
+func (r *UserRepositoryImpl) Create(ctx context.Context, user *models.User) (*models.User, error) {
+	if err := r.db.WithContext(ctx).Create(user).Error; err != nil {
 		return nil, err
 	}
 
@@ -52,7 +53,7 @@ func (r *UserRepositoryImpl) FindByEmail(email string) (*models.User, error) {
 	return &user, nil
 }
 
-func (r *UserRepositoryImpl) FindByID(id uint) (*models.User, error) {
+func (r *UserRepositoryImpl) FindByID(id uint64) (*models.User, error) {
 	var user models.User
 
 	err := r.db.First(&user, id).Error

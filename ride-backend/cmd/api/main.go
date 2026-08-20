@@ -3,8 +3,12 @@ package main
 import (
 	"log"
 	"log/slog"
+	"net"
+	"net/http"
 	"os"
 	"time"
+
+	pb "github.com/ride-app/shared/pkg/driver"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -14,16 +18,12 @@ import (
 	"github.com/ride-app/internal/models"
 	refreshRepository "github.com/ride-app/internal/repository/refresh_tokens"
 	userRepository "github.com/ride-app/internal/repository/users"
-	vehicleRepository "github.com/ride-app/internal/repository/vehicles"
-
-	"github.com/ride-app/internal/routes"
+	"google.golang.org/grpc"
 
 	tokenService "github.com/ride-app/internal/services/token"
 	userService "github.com/ride-app/internal/services/users"
-	vehicleService "github.com/ride-app/internal/services/vehicle"
 
 	userHandles "github.com/ride-app/internal/handlers/users"
-	vehicleHandles "github.com/ride-app/internal/handlers/vehicle"
 )
 
 func main() {
@@ -109,7 +109,7 @@ func main() {
 	userRepo := userRepository.NewUserRepository(database)
 
 	refreshRepo := refreshRepository.NewRefreshTokenRepository(database)
-	vehicleRepo := vehicleRepository.NewVehicleRepository(database)
+	// vehicleRepo := vehicleRepository.NewVehicleRepository(database)
 
 	// Services
 	tokenSvc := tokenService.NewTokenService(
@@ -124,23 +124,36 @@ func main() {
 		refreshRepo,
 	)
 
-	vehicleSvc := vehicleService.NewVehicleService(vehicleRepo)
+	// vehicleSvc := vehicleService.NewVehicleService(vehicleRepo)
 
 	// Handlers
 	userHandler := userHandles.NewUserHandler(userSvc)
-	vehicleHandler := vehicleHandles.NewVehicleHandlers(vehicleSvc)
-	// Routes
-	routes.Routes(r, userHandler, vehicleHandler)
+	// _ := vehicleHandles.NewVehicleHandlers(vehicleSvc)
 
-	// Start server
-	addr := ":" + cfg.PORT
-
-	log.Printf("Server running on http://localhost%s", addr)
-
-	if err := r.Run(addr); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+	listener, err := net.Listen("tcp", ":5500")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
 	}
 
-	// grpcServer := grpc.NewServer()
-	// pb.RegisterDriverServiceServer(grpcServer,)
+	grpcServer := grpc.NewServer()
+	pb.RegisterDriverServiceServer(grpcServer, userHandler)
+	mux := http.NewServeMux()
+
+	go func() {
+
+		log.Println("HTTP Server :8081")
+
+		if err := http.ListenAndServe(
+			":8081",
+			mux,
+		); err != nil {
+			log.Fatal(err)
+		}
+
+	}()
+	log.Println("gRPC Server :5500")
+
+	if err := grpcServer.Serve(listener); err != nil {
+		log.Fatal(err)
+	}
 }
