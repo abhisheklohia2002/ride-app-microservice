@@ -14,3 +14,8 @@ type DriverResponse struct {
 	Phone    string `json:"phone" binding:"required"`
 	Role     string `json:"role" binding:"required"`
 }
+
+type LoginDriverRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=8"`
+}
