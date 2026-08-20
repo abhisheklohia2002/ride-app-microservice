@@ -8,7 +8,6 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-
 	"github.com/ride-app/internal/auth"
 	"github.com/ride-app/internal/config"
 	dbConnection "github.com/ride-app/internal/connection"
@@ -141,4 +140,7 @@ func main() {
 	if err := r.Run(addr); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
+
+	// grpcServer := grpc.NewServer()
+	// pb.RegisterDriverServiceServer(grpcServer,)
 }

@@ -1,65 +1,76 @@
 package users
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ride-app/internal/dto"
 	"github.com/ride-app/internal/helpers"
 	"github.com/ride-app/internal/services/users"
+	pb "github.com/ride-app/shared/pkg/driver"
 )
 
-type UserHandler interface {
-	Register(c *gin.Context)
-	Login(c *gin.Context)
-	Self(c *gin.Context)
-	Logout(c *gin.Context)
-	Refresh(c *gin.Context)
-}
+// type UserHandler interface {
+// 	Register(c *gin.Context)
+// 	Login(c *gin.Context)
+// 	Self(c *gin.Context)
+// 	Logout(c *gin.Context)
+// 	Refresh(c *gin.Context)
+// }
 
 type UserHandlerImpl struct {
 	service users.UserService
+	pb.UnimplementedDriverServiceServer
 }
 
-func NewUserHandler(service users.UserService) UserHandler {
+func NewUserHandler(service users.UserService) *UserHandlerImpl {
 	return &UserHandlerImpl{
 		service: service,
 	}
 }
 
-func (h *UserHandlerImpl) Register(c *gin.Context) {
-	var req dto.RegisterUserRequest
+func (h *UserHandlerImpl) Register(ctx context.Context, req *pb.CreateRequestDriver) (*pb.UserResponse, error) {
+	// var req dto.RegisterUserRequest
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "invalid request body",
-			"error":   err.Error(),
-		})
-		return
+	createReq := dto.RegisterUserRequest{
+		FullName: req.Fullname,
+		Email:    req.Email,
+		Password: req.Password,
+		Phone:    string(req.Phone),
+		Role:     req.Role,
 	}
+	res, err := h.service.Register(ctx,createReq)
+	// if err := c.ShouldBindJSON(&req); err != nil {
+	// 	c.JSON(http.StatusBadRequest, gin.H{
+	// 		"message": "invalid request body",
+	// 		"error":   err.Error(),
+	// 	})
+	// 	return
+	// }
 
-	res, err := h.service.Register(req)
-	if err != nil {
-		if err.Error() == "email already exists" {
-			c.JSON(http.StatusConflict, gin.H{
-				"message": "email already exists",
-			})
-			return
-		}
+	// res, err := h.service.Register(req)
+	// if err != nil {
+	// 	if err.Error() == "email already exists" {
+	// 		c.JSON(http.StatusConflict, gin.H{
+	// 			"message": "email already exists",
+	// 		})
+	// 		return
+	// 	}
 
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "failed to register user",
-			"error":   err.Error(),
-		})
-		return
-	}
+	// 	c.JSON(http.StatusInternalServerError, gin.H{
+	// 		"message": "failed to register user",
+	// 		"error":   err.Error(),
+	// 	})
+	// 	return
+	// }
 
-	helpers.SetAuthCookies(c, res.AccessToken, res.RefreshToken)
+	// helpers.SetAuthCookies(c, res.AccessToken, res.RefreshToken)
 
-	c.JSON(http.StatusCreated, gin.H{
-		"message": "user registered successfully",
-		"data":    res.User,
-	})
+	// c.JSON(http.StatusCreated, gin.H{
+	// 	"message": "user registered successfully",
+	// 	"data":    res.User,
+	// })
 }
 
 func (h *UserHandlerImpl) Login(c *gin.Context) {

@@ -7,7 +7,7 @@ import (
 	middleware "github.com/ride-app/internal/middleware"
 )
 
-func Routes(router *gin.Engine, userhandler users.UserHandler, vehicleHandler vehicle.Vehicle) {
+func Routes(router *gin.Engine, userhandler users.UserHandlerImpl, vehicleHandler vehicle.Vehicle) {
 	api := router.Group("/api")
 
 	auth := api.Group("/auth")

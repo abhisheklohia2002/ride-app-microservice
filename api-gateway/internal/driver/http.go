@@ -17,7 +17,12 @@ const refreshMaxAge = 60 * 60 * 24 * 365
 func HandleCreateDriver(w http.ResponseWriter, r *http.Request) {
 	var req dto.CreateDriverRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httpx.Error(w, http.StatusBadRequest, "Something is Problem in Your payload", string(http.StatusBadRequest))
+		httpx.Error(
+			w,
+			http.StatusBadRequest,
+			"Invalid request payload",
+			string(http.StatusBadRequest),
+		)
 		return
 	}
 
@@ -33,7 +38,7 @@ func HandleCreateDriver(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err != nil {
-		httpx.Error(w, http.StatusBadRequest, "Something is Problem in Your payload", string(http.StatusBadRequest))
+		httpx.Error(w, http.StatusBadRequest, err.Error(), string(http.StatusBadRequest))
 		return
 	}
 

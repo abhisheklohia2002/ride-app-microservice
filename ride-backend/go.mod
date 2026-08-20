@@ -3,15 +3,17 @@ module github.com/ride-app
 go 1.26.5
 
 require (
-	github.com/docker/go-connections v0.8.1
 	github.com/gin-contrib/cors v1.7.7
 	github.com/gin-gonic/gin v1.12.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/joho/godotenv v1.5.1
 	golang.org/x/crypto v0.55.0
+	google.golang.org/grpc v1.83.1
 	gorm.io/driver/postgres v1.6.2
 	gorm.io/gorm v1.31.2
 )
+
+require google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 
 require (
 	github.com/bytedance/gopkg v0.1.4 // indirect
@@ -40,6 +42,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.61.0 // indirect
+	github.com/ride-app/shared v0.0.0
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.2 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.8.0 // indirect
@@ -50,3 +53,5 @@ require (
 	golang.org/x/text v0.41.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 )
+
+replace github.com/ride-app/shared => ../shared
