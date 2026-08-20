@@ -3,9 +3,13 @@ package driver
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	pb "github.com/ride-app/shared/pkg/driver"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/ride-api-gateway/internal/auth"
 	"github.com/ride-api-gateway/internal/driver/dto"
 	grpcDriverClient "github.com/ride-api-gateway/internal/grpc/driver"
 	"github.com/ride-api-gateway/internal/httpx"
@@ -111,4 +115,47 @@ func HandlerLoginDriver(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(clientResp)
 
+}
+
+func HandleDriverSelf(w http.ResponseWriter, r *http.Request) {
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok {
+		httpx.Error(
+			w,
+			http.StatusUnauthorized,
+			"unauthorized",
+			"INVALID_REQUEST",
+		)
+
+		return
+	}
+	md := metadata.Pairs(
+		"user-id", strconv.Itoa(int(claims.UserID)),
+		"email", claims.Email,
+		"role", claims.Role,
+	)
+
+	ctx := metadata.NewOutgoingContext(r.Context(), md)
+	resp, err := grpcDriverClient.DriverClient.Self(ctx, &emptypb.Empty{})
+
+	if err != nil {
+		httpx.HandleGRPCError(w, err)
+		return
+	}
+	if resp.Id != uint64(claims.UserID) {
+		httpx.Error(
+			w,
+			http.StatusForbidden,
+			"forbidden",
+			"INVALID_REQUEST",
+		)
+
+		return
+	}
+	json.NewEncoder(w).Encode(resp)
+}
+
+
+func HandleDriverLogout(){
+	
 }
