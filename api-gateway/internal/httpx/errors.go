@@ -24,3 +24,17 @@ func Error(w http.ResponseWriter, status int, message string, code string) {
 		},
 	})
 }
+
+func Success(
+	w http.ResponseWriter,
+	status int,
+	message string,
+) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"code":    status,
+		"message": message,
+	})
+}

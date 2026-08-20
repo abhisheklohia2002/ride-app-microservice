@@ -35,9 +35,11 @@ func main() {
 
 	mux.HandleFunc("POST /register/driver", driver.HandleCreateDriver)
 	mux.HandleFunc("GET /login/driver", driver.HandlerLoginDriver)
-	mux.Handle("GET /api/self", auth.AuthMiddleware(
+	mux.Handle("GET /self", auth.AuthMiddleware(
 		http.HandlerFunc(driver.HandleDriverSelf),
 	))
+	mux.HandleFunc("POST /logout", driver.HandleDriverLogout)
+	mux.HandleFunc("GET /refresh", driver.HandleDriverRefresh)
 	log.Fatal(http.ListenAndServe(":8080", mux))
 
 }

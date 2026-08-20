@@ -155,7 +155,85 @@ func HandleDriverSelf(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+func HandleDriverLogout(w http.ResponseWriter, r *http.Request) {
 
-func HandleDriverLogout(){
-	
+	refreshCookie, err := r.Cookie("refresh_token")
+	if err != nil || refreshCookie.Value == "" {
+		httpx.Error(
+			w,
+			http.StatusUnauthorized,
+			"Refresh token is required",
+			"REFRESH_TOKEN_REQUIRED",
+		)
+		return
+	}
+
+	ctx := metadata.AppendToOutgoingContext(
+		r.Context(),
+		"refresh_token",
+		refreshCookie.Value,
+	)
+
+	_, err = grpcDriverClient.DriverClient.Logout(
+		ctx,
+		&emptypb.Empty{},
+	)
+
+	if err != nil {
+		httpx.HandleGRPCError(w, err)
+		return
+	}
+
+	httpx.ClearAuthCookies(w)
+
+	httpx.Success(
+		w,
+		http.StatusOK,
+		"Logout successful",
+	)
+}
+
+func HandleDriverRefresh(w http.ResponseWriter, r *http.Request) {
+	refreshCookie, err := r.Cookie("refresh_token")
+	if err != nil || refreshCookie.Value == "" {
+		httpx.Error(
+			w,
+			http.StatusUnauthorized,
+			"Refresh token is required",
+			"REFRESH_TOKEN_REQUIRED",
+		)
+		return
+	}
+
+	ctx := metadata.AppendToOutgoingContext(
+		r.Context(),
+		"refresh_token",
+		refreshCookie.Value,
+	)
+
+	resp, err := grpcDriverClient.DriverClient.Refresh(ctx, &emptypb.Empty{})
+	if err != nil {
+		httpx.HandleGRPCError(w, err)
+		return
+	}
+	httpx.SetAuthCookies(
+		w,
+		resp.AccessToken,
+		resp.RefreshToken,
+		httpx.CookieConfig{
+			AccessMaxAge:  accessMaxAge,
+			RefreshMaxAge: refreshMaxAge,
+			Secure:        true,
+			SameSite:      http.SameSiteNoneMode,
+		},
+	)
+
+	clientResp := &dto.DriverResponse{
+		FullName: resp.Diver.Fullname,
+		Email:    resp.Diver.Email,
+		Phone:    resp.Diver.Phone,
+		Role:     resp.Diver.Role,
+	}
+
+	json.NewEncoder(w).Encode(clientResp)
 }
