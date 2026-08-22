@@ -11,4 +11,5 @@ type UpdateVehicleRequest struct {
 	FullName    *string `json:"full_name"`
 	PlateNumber *string `json:"plate_number"`
 	Status      *bool   `json:"status"`
+	VehicleID   uint    `json:"vehicle_id" binding:"required"`
 }

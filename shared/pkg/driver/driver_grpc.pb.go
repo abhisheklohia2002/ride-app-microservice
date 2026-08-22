@@ -246,6 +246,7 @@ var _DriverService_serviceDesc = grpc.ServiceDesc{
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type VehicleServiceClient interface {
 	Create(ctx context.Context, in *CreateRequestVehicle, opts ...grpc.CallOption) (*VehicleResponse, error)
+	Update(ctx context.Context, in *UpdateRequestVehicle, opts ...grpc.CallOption) (*VehicleResponse, error)
 }
 
 type vehicleServiceClient struct {
@@ -265,11 +266,21 @@ func (c *vehicleServiceClient) Create(ctx context.Context, in *CreateRequestVehi
 	return out, nil
 }
 
+func (c *vehicleServiceClient) Update(ctx context.Context, in *UpdateRequestVehicle, opts ...grpc.CallOption) (*VehicleResponse, error) {
+	out := new(VehicleResponse)
+	err := c.cc.Invoke(ctx, "/driverService.VehicleService/Update", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // VehicleServiceServer is the server API for VehicleService service.
 // All implementations must embed UnimplementedVehicleServiceServer
 // for forward compatibility
 type VehicleServiceServer interface {
 	Create(context.Context, *CreateRequestVehicle) (*VehicleResponse, error)
+	Update(context.Context, *UpdateRequestVehicle) (*VehicleResponse, error)
 	mustEmbedUnimplementedVehicleServiceServer()
 }
 
@@ -279,6 +290,9 @@ type UnimplementedVehicleServiceServer struct {
 
 func (UnimplementedVehicleServiceServer) Create(context.Context, *CreateRequestVehicle) (*VehicleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
+}
+func (UnimplementedVehicleServiceServer) Update(context.Context, *UpdateRequestVehicle) (*VehicleResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
 }
 func (UnimplementedVehicleServiceServer) mustEmbedUnimplementedVehicleServiceServer() {}
 
@@ -311,6 +325,24 @@ func _VehicleService_Create_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VehicleService_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateRequestVehicle)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VehicleServiceServer).Update(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/driverService.VehicleService/Update",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VehicleServiceServer).Update(ctx, req.(*UpdateRequestVehicle))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _VehicleService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "driverService.VehicleService",
 	HandlerType: (*VehicleServiceServer)(nil),
@@ -318,6 +350,10 @@ var _VehicleService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Create",
 			Handler:    _VehicleService_Create_Handler,
+		},
+		{
+			MethodName: "Update",
+			Handler:    _VehicleService_Update_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

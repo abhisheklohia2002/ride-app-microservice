@@ -18,9 +18,9 @@ service DriverService {
 service VehicleService {
     rpc Create(CreateRequestVehicle) returns (VehicleResponse);
     rpc Update(UpdateRequestVehicle) returns (VehicleResponse);
-    rpc Delete(google.protobuf.Empty) returns(DeleteResponse);
-    rpc GetByID(google.protobuf.Empty) returns(VehicleResponse);
-    rpc GetAll(google.protobuf.Empty) returns(VehicleResponse);
+    // rpc Delete(google.protobuf.Empty) returns(DeleteResponse);
+    // rpc GetByID(google.protobuf.Empty) returns(VehicleResponse);
+    // rpc GetAll(google.protobuf.Empty) returns(VehicleResponse);
 }
 
 message Vehicle{

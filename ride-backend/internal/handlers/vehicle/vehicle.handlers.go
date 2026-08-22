@@ -44,7 +44,7 @@ func (h *vehicleImpl) Create(ctx context.Context, req *pb.CreateRequestVehicle) 
 	result, err := h.vehicleSvc.Create(ctx, createReq)
 
 	if err != nil {
-
+		return nil, err
 	}
 
 	return &pb.VehicleResponse{
@@ -93,37 +93,33 @@ func (h *vehicleImpl) GetByID(c *gin.Context) {
 }
 
 // PUT /vehicles/:id
-func (h *vehicleImpl) Update(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+func (h *vehicleImpl) Update(ctx context.Context, req *pb.UpdateRequestVehicle) (*pb.VehicleResponse, error) {
+
+	vehicleID, ok := ctx.Value("vehicleID").(int)
+	if !ok {
+		// invalid or missing userID
+	}
+	vehicleReq := dto.UpdateVehicleRequest{
+		FullName:    &req.FullName,
+		PlateNumber: &req.PlateNumber,
+		Status:      &req.Status,
+		VehicleID:   uint(vehicleID),
+	}
+
+	result, err := h.vehicleSvc.Update(ctx, uint(vehicleID), vehicleReq)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid vehicle id",
-		})
-		return
+		return nil, err
 	}
 
-	var req dto.UpdateVehicleRequest
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	result, err := h.vehicleSvc.Update(
-		c.Request.Context(),
-		uint(id),
-		req,
-	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, result)
+	return &pb.VehicleResponse{
+		Vehicle: &pb.Vehicle{
+			Id:          int64(result.ID),
+			FullName:    result.FullName,
+			PlateNumber: result.PlateNumber,
+			Status:      result.Status,
+			UserId:      int64(result.UserID),
+		},
+	}, nil
 }
 
 // DELETE /vehicles/:id
