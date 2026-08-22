@@ -18,12 +18,14 @@ import (
 	"github.com/ride-app/internal/models"
 	refreshRepository "github.com/ride-app/internal/repository/refresh_tokens"
 	userRepository "github.com/ride-app/internal/repository/users"
+	vehicleRepository "github.com/ride-app/internal/repository/vehicles"
 	"google.golang.org/grpc"
 
+	userHandles "github.com/ride-app/internal/handlers/users"
+	vehicleHandles "github.com/ride-app/internal/handlers/vehicle"
 	tokenService "github.com/ride-app/internal/services/token"
 	userService "github.com/ride-app/internal/services/users"
-
-	userHandles "github.com/ride-app/internal/handlers/users"
+	vehicleService "github.com/ride-app/internal/services/vehicle"
 )
 
 func main() {
@@ -103,7 +105,7 @@ func main() {
 	userRepo := userRepository.NewUserRepository(database)
 
 	refreshRepo := refreshRepository.NewRefreshTokenRepository(database)
-	// vehicleRepo := vehicleRepository.NewVehicleRepository(database)
+	vehicleRepo := vehicleRepository.NewVehicleRepository(database)
 
 	// Services
 	tokenSvc := tokenService.NewTokenService(
@@ -118,11 +120,11 @@ func main() {
 		refreshRepo,
 	)
 
-	// vehicleSvc := vehicleService.NewVehicleService(vehicleRepo)
+	vehicleSvc := vehicleService.NewVehicleService(vehicleRepo)
 
 	// Handlers
 	userHandler := userHandles.NewUserHandler(userSvc)
-	// _ := vehicleHandles.NewVehicleHandlers(vehicleSvc)
+	vehicleHandler := vehicleHandles.NewVehicleHandlers(vehicleSvc)
 
 	listener, err := net.Listen("tcp", ":5500")
 	if err != nil {
@@ -131,6 +133,7 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 	pb.RegisterDriverServiceServer(grpcServer, userHandler)
+	pb.RegisterVehicleServiceServer(grpcServer, vehicleHandler)
 	mux := http.NewServeMux()
 
 	jwksPath := os.Getenv("JWKS_FILE_PATH")

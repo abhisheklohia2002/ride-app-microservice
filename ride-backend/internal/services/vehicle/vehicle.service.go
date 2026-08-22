@@ -55,10 +55,6 @@ func (s *vehicleService) Create(
 		Status:      req.Status,
 	}
 
-	if v.Status == "" {
-		v.Status = "inactive"
-	}
-
 	if err := s.repo.Create(ctx, v); err != nil {
 		return nil, err
 	}
@@ -99,10 +95,8 @@ func (s *vehicleService) Update(
 	if req.PlateNumber != nil {
 		v.PlateNumber = *req.PlateNumber
 	}
-
-	if req.Status != nil {
-		v.Status = *req.Status
-	}
+	v.Status = *req.Status
+	
 
 	if err := s.repo.Update(ctx, v); err != nil {
 		return nil, err

@@ -771,7 +771,9 @@ const file_proto_driver_driver_proto_rawDesc = "" +
 	"\x05Login\x12\x1f.driverService.LoginUserRequest\x1a\x1b.driverService.UserResponse\x12?\n" +
 	"\x04Self\x12\x16.google.protobuf.Empty\x1a\x1f.driverService.UserSelfResponse\x128\n" +
 	"\x06Logout\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\x12>\n" +
-	"\aRefresh\x12\x16.google.protobuf.Empty\x1a\x1b.driverService.UserResponseB\x15Z\x13./shared/pkg/driverb\x06proto3"
+	"\aRefresh\x12\x16.google.protobuf.Empty\x1a\x1b.driverService.UserResponse2_\n" +
+	"\x0eVehicleService\x12M\n" +
+	"\x06Create\x12#.driverService.CreateRequestVehicle\x1a\x1e.driverService.VehicleResponseB\x15Z\x13./shared/pkg/driverb\x06proto3"
 
 var (
 	file_proto_driver_driver_proto_rawDescOnce sync.Once
@@ -807,13 +809,15 @@ var file_proto_driver_driver_proto_depIdxs = []int32{
 	10, // 4: driverService.DriverService.Self:input_type -> google.protobuf.Empty
 	10, // 5: driverService.DriverService.Logout:input_type -> google.protobuf.Empty
 	10, // 6: driverService.DriverService.Refresh:input_type -> google.protobuf.Empty
-	8,  // 7: driverService.DriverService.Register:output_type -> driverService.UserResponse
-	8,  // 8: driverService.DriverService.Login:output_type -> driverService.UserResponse
-	9,  // 9: driverService.DriverService.Self:output_type -> driverService.UserSelfResponse
-	10, // 10: driverService.DriverService.Logout:output_type -> google.protobuf.Empty
-	8,  // 11: driverService.DriverService.Refresh:output_type -> driverService.UserResponse
-	7,  // [7:12] is the sub-list for method output_type
-	2,  // [2:7] is the sub-list for method input_type
+	1,  // 7: driverService.VehicleService.Create:input_type -> driverService.CreateRequestVehicle
+	8,  // 8: driverService.DriverService.Register:output_type -> driverService.UserResponse
+	8,  // 9: driverService.DriverService.Login:output_type -> driverService.UserResponse
+	9,  // 10: driverService.DriverService.Self:output_type -> driverService.UserSelfResponse
+	10, // 11: driverService.DriverService.Logout:output_type -> google.protobuf.Empty
+	8,  // 12: driverService.DriverService.Refresh:output_type -> driverService.UserResponse
+	3,  // 13: driverService.VehicleService.Create:output_type -> driverService.VehicleResponse
+	8,  // [8:14] is the sub-list for method output_type
+	2,  // [2:8] is the sub-list for method input_type
 	2,  // [2:2] is the sub-list for extension type_name
 	2,  // [2:2] is the sub-list for extension extendee
 	0,  // [0:2] is the sub-list for field type_name
@@ -832,7 +836,7 @@ func file_proto_driver_driver_proto_init() {
 			NumEnums:      0,
 			NumMessages:   10,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   2,
 		},
 		GoTypes:           file_proto_driver_driver_proto_goTypes,
 		DependencyIndexes: file_proto_driver_driver_proto_depIdxs,
