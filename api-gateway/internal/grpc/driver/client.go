@@ -9,6 +9,7 @@ import (
 )
 
 var DriverClient pb.DriverServiceClient
+var VehicleClient pb.VehicleServiceClient
 
 func InitDriverClient() *grpc.ClientConn {
 	address := "localhost:5500"
@@ -24,6 +25,7 @@ func InitDriverClient() *grpc.ClientConn {
 	}
 
 	DriverClient = pb.NewDriverServiceClient(conn)
+	VehicleClient = pb.NewVehicleServiceClient(conn)
 
 	log.Printf("Driver Service gRPC client initialized: %s", address)
 
