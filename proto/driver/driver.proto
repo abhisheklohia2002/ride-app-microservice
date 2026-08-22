@@ -17,6 +17,10 @@ service DriverService {
 
 service VehicleService {
     rpc Create(CreateRequestVehicle) returns (VehicleResponse);
+    rpc Update(UpdateRequestVehicle) returns (VehicleResponse);
+    rpc Delete(google.protobuf.Empty) returns(DeleteResponse);
+    rpc GetByID(google.protobuf.Empty) returns(VehicleResponse);
+    rpc GetAll(google.protobuf.Empty) returns(VehicleResponse);
 }
 
 message Vehicle{
@@ -36,11 +40,12 @@ message CreateRequestVehicle{
 }
 
 message UpdateRequestVehicle{
-     int64 id = 1;
-     int64 userId = 2;
-     string fullName = 3;
-     string plateNumber = 4;
-     bool  status = 5;
+     string fullName = 2;
+     string plateNumber = 3;
+     bool status = 4;
+}
+message DeleteResponse {
+    string message = 1;
 }
 
 message VehicleResponse {

@@ -40,6 +40,11 @@ func main() {
 	))
 	mux.HandleFunc("POST /logout", driver.HandleDriverLogout)
 	mux.HandleFunc("GET /refresh", driver.HandleDriverRefresh)
+
+	//vehicle
+
+	mux.HandleFunc("POST /vehicle", driver.HandlerCreateVehicle)
+
 	log.Println("api gateway is Running at: 8080 http:localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }
