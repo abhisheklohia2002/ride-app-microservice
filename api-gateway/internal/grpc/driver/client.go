@@ -11,7 +11,7 @@ import (
 var DriverClient pb.DriverServiceClient
 
 func InitDriverClient() *grpc.ClientConn {
-	address := "localhost:8081"
+	address := "localhost:5500"
 
 	conn, err := grpc.NewClient(
 		address,

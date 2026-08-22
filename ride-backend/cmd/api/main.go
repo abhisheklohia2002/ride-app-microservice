@@ -93,12 +93,6 @@ func main() {
 			"status": "ok",
 		})
 	})
-
-	// JWKS
-	r.StaticFile(
-		"/.well-known/jwks.json",
-		"../public/.well-known/jwks.json",
-	)
 	// JWT
 	privateKey, err := auth.LoadRSAPrivateKeyFromEnv("JWT_PRIVATE_KEY")
 	if err != nil {
@@ -138,6 +132,26 @@ func main() {
 	grpcServer := grpc.NewServer()
 	pb.RegisterDriverServiceServer(grpcServer, userHandler)
 	mux := http.NewServeMux()
+
+	jwksPath := os.Getenv("JWKS_FILE_PATH")
+
+	if jwksPath == "" {
+		log.Fatal("JWKS_FILE_PATH is not configured")
+	}
+
+	mux.HandleFunc("/.well-known/jwks.json", func(w http.ResponseWriter, r *http.Request) {
+
+		w.Header().Set("Content-Type", "application/json")
+
+		http.ServeFile(w, r, jwksPath)
+	})
+
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	})
 
 	go func() {
 

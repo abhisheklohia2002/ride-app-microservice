@@ -25,7 +25,7 @@ func main() {
 
 	slog.SetDefault(logger)
 	mux := http.NewServeMux()
-	jwksURL := "http://user-service:8081/.well-known/jwks.json"
+	jwksURL := "http://localhost:8081/.well-known/jwks.json"
 
 	err := auth.LoadJWKS(jwksURL)
 
@@ -40,6 +40,6 @@ func main() {
 	))
 	mux.HandleFunc("POST /logout", driver.HandleDriverLogout)
 	mux.HandleFunc("GET /refresh", driver.HandleDriverRefresh)
+	log.Println("api gateway is Running at: 8080 http:localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", mux))
-
 }
