@@ -1,0 +1,66 @@
+
+
+syntax="proto3";
+
+// import "google/protobuf/empty.proto";
+
+package rideService;
+option go_package = "./shared/pkg/ride";
+
+
+service RideService {
+    rpc CreateRide(CreateRideRequest) returns (RideResponse);
+}
+
+
+
+
+message Ride {
+    int64 id = 1;
+
+    int64 passenger_id = 2;
+
+    optional int64 driver_id = 3;
+
+    string status = 4;
+
+    Location pickup = 5;
+
+    Location destination = 6;
+
+    double estimated_distance = 7;
+
+    int32 estimated_duration = 8;
+
+    string requested_at = 9;
+
+    string driver_assigned_at = 10;
+
+    string driver_arrived_at = 11;
+
+    string started_at = 12;
+
+    string completed_at = 13;
+
+    string cancelled_at = 14;
+
+    string created_at = 15;
+
+    string updated_at = 16;
+}
+
+message Location {
+    double latitude = 1;
+    double longitude = 2;
+    string address = 3;
+}
+
+message CreateRideRequest {
+    Location pickup = 1;
+    Location destination = 2;
+    string vehicle_type = 3;
+}
+
+message RideResponse {
+    Ride ride = 1;
+}
