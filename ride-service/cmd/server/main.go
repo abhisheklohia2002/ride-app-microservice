@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"log/slog"
 	"net"
@@ -15,9 +16,11 @@ import (
 	"github.com/ride-service/internal/config"
 	"github.com/ride-service/internal/db"
 	"github.com/ride-service/internal/handlers"
+	"github.com/ride-service/internal/messaging/rabbitmq"
 	"github.com/ride-service/internal/models"
 	"github.com/ride-service/internal/repository"
 	"github.com/ride-service/internal/services"
+	"github.com/ride-service/internal/workers"
 	"google.golang.org/grpc"
 )
 
@@ -73,6 +76,7 @@ func main() {
 		&models.Ride{},
 		&models.RideFare{},
 		&models.RideStatusHistory{},
+		&models.OutboxEvent{},
 	); err != nil {
 		log.Fatalf("Database migration failed: %v", err)
 	}
@@ -83,11 +87,32 @@ func main() {
 		})
 	})
 
+	publisher, err := rabbitmq.NewPublisher(
+		cfg.RABBITMQ_URL,
+	)
+
+	if err != nil {
+		log.Fatalf(
+			"failed to connect RabbitMQ: %v",
+			err,
+		)
+	}
+
+	defer publisher.Close()
+
+	repo := repository.NewRepository(database)
+	outboxWorker := workers.NewOutboxWorker(
+		repo,
+		publisher,
+	)
+
+	ctx := context.Background()
+
+	go outboxWorker.Start(ctx)
 	matchingClient, err := matching.NewClient("localhost:5502")
 	if err != nil {
 		log.Fatalf("failed to Matching listen: %v", err)
 	}
-	repo := repository.NewRepository(database)
 	svc := services.NewRideService(repo, matchingClient)
 	handlers := handlers.NewRideHandlers(svc)
 

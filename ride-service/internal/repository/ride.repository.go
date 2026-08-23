@@ -2,7 +2,9 @@ package repository
 
 import (
 	"context"
+	"time"
 
+	"github.com/ride-service/internal/enums"
 	"github.com/ride-service/internal/models"
 	"gorm.io/gorm"
 )
@@ -40,6 +42,27 @@ type Repository interface {
 		tx *gorm.DB,
 		req models.Ride,
 	) (*models.Ride, error)
+
+	CreateOutboxEvent(
+		ctx context.Context,
+		tx *gorm.DB,
+		event models.OutboxEvent,
+	) error
+
+	GetPendingOutboxEvents(
+		ctx context.Context,
+		limit int,
+	) ([]models.OutboxEvent, error)
+
+	MarkOutboxPublished(
+		ctx context.Context,
+		id uint64,
+	) error
+
+	IncrementOutboxRetry(
+		ctx context.Context,
+		id uint64,
+	) error
 }
 
 type repositoryImpl struct {
@@ -130,4 +153,66 @@ func (r repositoryImpl) CreateRideTx(
 	}
 
 	return &req, nil
+}
+
+func (r repositoryImpl) CreateOutboxEvent(
+	ctx context.Context,
+	tx *gorm.DB,
+	event models.OutboxEvent,
+) error {
+
+	return tx.WithContext(ctx).
+		Create(&event).
+		Error
+}
+
+func (r repositoryImpl) GetPendingOutboxEvents(
+	ctx context.Context,
+	limit int,
+) ([]models.OutboxEvent, error) {
+
+	var events []models.OutboxEvent
+
+	err := r.db.WithContext(ctx).
+		Where(
+			"status = ?",
+			string(enums.OutboxStatusPending),
+		).
+		Order("id ASC").
+		Limit(limit).
+		Find(&events).
+		Error
+
+	return events, err
+}
+
+func (r repositoryImpl) MarkOutboxPublished(
+	ctx context.Context,
+	id uint64,
+) error {
+
+	now := time.Now()
+
+	return r.db.WithContext(ctx).
+		Model(&models.OutboxEvent{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{
+			"status":       string(enums.OutboxStatusPublished),
+			"published_at": now,
+		}).
+		Error
+}
+
+func (r repositoryImpl) IncrementOutboxRetry(
+	ctx context.Context,
+	id uint64,
+) error {
+
+	return r.db.WithContext(ctx).
+		Model(&models.OutboxEvent{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{
+			"retry_count": gorm.Expr("retry_count + ?", 1),
+		}).
+		Error
 }

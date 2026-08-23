@@ -11,6 +11,21 @@ services:
       - "5809:5432"
     volumes:
       - rideservice_pgdata:/var/lib/postgresql/data
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: ride-service-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+    ports:
+      - "5677:5672"    # AMQP protocol port
+      - "15672:15672"  # Management UI port
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    depends_on:
+      - rideservice-db # optional, but good to have
 
 volumes:
   rideservice_pgdata:
+  rabbitmq_data:
