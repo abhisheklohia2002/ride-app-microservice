@@ -11,6 +11,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	pb "github.com/ride-app/shared/pkg/ride"
+	"github.com/ride-service/internal/clinets/matching"
 	"github.com/ride-service/internal/config"
 	"github.com/ride-service/internal/db"
 	"github.com/ride-service/internal/handlers"
@@ -82,8 +83,12 @@ func main() {
 		})
 	})
 
+	matchingClient, err := matching.NewClient("localhost:5502")
+	if err != nil {
+		log.Fatalf("failed to Matching listen: %v", err)
+	}
 	repo := repository.NewRepository(database)
-	svc := services.NewRideService(repo)
+	svc := services.NewRideService(repo, matchingClient)
 	handlers := handlers.NewRideHandlers(svc)
 
 	listener, err := net.Listen("tcp", ":5501")

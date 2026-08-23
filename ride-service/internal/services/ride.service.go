@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/ride-service/internal/clinets/matching"
 	"github.com/ride-service/internal/enums"
 	"github.com/ride-service/internal/handlers/dto"
 	"github.com/ride-service/internal/models"
@@ -26,14 +27,18 @@ type Service interface {
 }
 
 type serviceImpl struct {
-	repo repository.Repository
+	repo           repository.Repository
+	matchingClient matching.Client
 }
 
 func NewRideService(
 	repo repository.Repository,
+	matchingClient matching.Client,
+
 ) Service {
 	return &serviceImpl{
-		repo: repo,
+		repo:           repo,
+		matchingClient: matchingClient,
 	}
 }
 
@@ -44,26 +49,6 @@ func (s serviceImpl) CreateRide(
 
 	if req.PassengerID == 0 {
 		return nil, errors.New("passenger id is required")
-	}
-
-	if req.Pickup.Latitude < -90 ||
-		req.Pickup.Latitude > 90 {
-		return nil, errors.New("invalid pickup latitude")
-	}
-
-	if req.Pickup.Longitude < -180 ||
-		req.Pickup.Longitude > 180 {
-		return nil, errors.New("invalid pickup longitude")
-	}
-
-	if req.Destination.Latitude < -90 ||
-		req.Destination.Latitude > 90 {
-		return nil, errors.New("invalid destination latitude")
-	}
-
-	if req.Destination.Longitude < -180 ||
-		req.Destination.Longitude > 180 {
-		return nil, errors.New("invalid destination longitude")
 	}
 
 	ride := models.Ride{
@@ -108,6 +93,18 @@ func (s serviceImpl) CreateRide(
 			history,
 		)
 	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	createdRide, err = s.TransitionRide(
+		ctx,
+		createdRide.ID,
+		enums.RideStatusSearchingDriver,
+		"SYSTEM",
+	)
+
 	if err != nil {
 		return nil, err
 	}
