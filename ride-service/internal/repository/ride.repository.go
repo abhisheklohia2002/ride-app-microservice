@@ -31,6 +31,15 @@ type Repository interface {
 		rideID uint64,
 		status string,
 	) error
+	Transaction(
+		ctx context.Context,
+		fn func(tx *gorm.DB) error,
+	) error
+	CreateRideTx(
+		ctx context.Context,
+		tx *gorm.DB,
+		req models.Ride,
+	) (*models.Ride, error)
 }
 
 type repositoryImpl struct {
@@ -98,4 +107,27 @@ func (r repositoryImpl) UpdateRideStatus(
 		Where("id = ?", rideID).
 		Update("status", status).
 		Error
+}
+
+func (r repositoryImpl) Transaction(
+	ctx context.Context,
+	fn func(tx *gorm.DB) error,
+) error {
+
+	return r.db.WithContext(ctx).Transaction(fn)
+}
+
+func (r repositoryImpl) CreateRideTx(
+	ctx context.Context,
+	tx *gorm.DB,
+	req models.Ride,
+) (*models.Ride, error) {
+
+	if err := tx.WithContext(ctx).
+		Create(&req).
+		Error; err != nil {
+		return nil, err
+	}
+
+	return &req, nil
 }

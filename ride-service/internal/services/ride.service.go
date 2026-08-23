@@ -9,12 +9,19 @@ import (
 	"github.com/ride-service/internal/handlers/dto"
 	"github.com/ride-service/internal/models"
 	"github.com/ride-service/internal/repository"
+	"gorm.io/gorm"
 )
 
 type Service interface {
 	CreateRide(
 		ctx context.Context,
 		req dto.CreateRequestRide,
+	) (*models.Ride, error)
+	TransitionRide(
+		ctx context.Context,
+		rideID uint64,
+		toStatus enums.RideStatus,
+		changedBy string,
 	) (*models.Ride, error)
 }
 
@@ -73,13 +80,110 @@ func (s serviceImpl) CreateRide(
 		RequestedAt: time.Now(),
 	}
 
-	createdRide, err := s.repo.CreateRide(
-		ctx,
-		ride,
-	)
+	var createdRide *models.Ride
+
+	err := s.repo.Transaction(ctx, func(tx *gorm.DB) error {
+
+		var err error
+
+		createdRide, err = s.repo.CreateRideTx(
+			ctx,
+			tx,
+			ride,
+		)
+		if err != nil {
+			return err
+		}
+
+		history := models.RideStatusHistory{
+			RideID:     createdRide.ID,
+			FromStatus: "",
+			ToStatus:   string(enums.RideStatusRequested),
+			ChangedBy:  "PASSENGER",
+		}
+
+		return s.repo.CreateRideStatusHistory(
+			ctx,
+			tx,
+			history,
+		)
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	return createdRide, nil
+}
+
+func (s serviceImpl) TransitionRide(
+	ctx context.Context,
+	rideID uint64,
+	toStatus enums.RideStatus,
+	changedBy string,
+) (*models.Ride, error) {
+
+	var updatedRide *models.Ride
+
+	err := s.repo.Transaction(ctx, func(tx *gorm.DB) error {
+
+		ride, err := s.repo.GetRideByID(
+			ctx,
+			tx,
+			rideID,
+		)
+		if err != nil {
+			return err
+		}
+
+		currentStatus := enums.RideStatus(
+			ride.Status,
+		)
+
+		if !enums.IsValidRideTransition(
+			currentStatus,
+			toStatus,
+		) {
+			return errors.New(
+				"invalid ride status transition",
+			)
+		}
+
+		err = s.repo.UpdateRideStatus(
+			ctx,
+			tx,
+			rideID,
+			string(toStatus),
+		)
+		if err != nil {
+			return err
+		}
+
+		history := models.RideStatusHistory{
+			RideID:     ride.ID,
+			FromStatus: string(currentStatus),
+			ToStatus:   string(toStatus),
+			ChangedBy:  changedBy,
+		}
+
+		err = s.repo.CreateRideStatusHistory(
+			ctx,
+			tx,
+			history,
+		)
+		if err != nil {
+			return err
+		}
+
+		ride.Status = string(toStatus)
+
+		updatedRide = ride
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return updatedRide, nil
 }
