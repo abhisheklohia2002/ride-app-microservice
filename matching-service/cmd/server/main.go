@@ -1,17 +1,26 @@
 package main
 
 import (
+	"context"
+	"log"
 	"log/slog"
 	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+
 	"github.com/ride-matching-service/internal/config"
+	"github.com/ride-matching-service/internal/consumers"
+	"github.com/ride-matching-service/internal/messaging/rabbitmq"
+	"github.com/ride-matching-service/internal/redis"
+	"github.com/ride-matching-service/internal/repository"
+	"github.com/ride-matching-service/internal/services"
 )
 
 func main() {
 	cfg := config.MustLoad()
+
 	logger := slog.New(
 		slog.NewJSONHandler(
 			os.Stdout,
@@ -23,6 +32,66 @@ func main() {
 	)
 
 	slog.SetDefault(logger)
+
+	ctx := context.Background()
+
+	rabbitConsumer, err := rabbitmq.NewConsumer(
+		cfg.RABBITMQ_URL,
+	)
+	if err != nil {
+		log.Fatalf(
+			"failed to connect RabbitMQ: %v",
+			err,
+		)
+	}
+
+	defer rabbitConsumer.Close()
+
+	redisClient, err := redis.NewClient(
+		cfg.REDIS_ADDR,
+	)
+	if err != nil {
+		log.Fatalf(
+			"failed to connect Redis: %v",
+			err,
+		)
+	}
+
+	defer redisClient.Close()
+
+	driverLocationRepo := repository.NewDriverLocationRepository(
+		redisClient.RDB,
+	)
+
+	matchingService := services.NewMatchingService(
+		driverLocationRepo,
+	)
+
+	err = matchingService.UpdateDriverLocation(
+		ctx,
+		101,
+		28.6139,
+		77.2090,
+	)
+	if err != nil {
+		log.Fatalf(
+			"failed to update driver location: %v",
+			err,
+		)
+	}
+
+	rideConsumer := consumers.NewRideConsumer(
+		rabbitConsumer,
+		matchingService,
+	)
+
+	if err := rideConsumer.Start(ctx); err != nil {
+		log.Fatalf(
+			"failed to start ride consumer: %v",
+			err,
+		)
+	}
+
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
@@ -63,5 +132,13 @@ func main() {
 		})
 	})
 
-	r.Run(":8082")
+	log.Println("Matching Service HTTP server running on :8085")
+	log.Println("Matching Service RabbitMQ consumer started")
+
+	if err := r.Run(":8085"); err != nil {
+		log.Fatalf(
+			"matching service failed: %v",
+			err,
+		)
+	}
 }
