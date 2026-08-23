@@ -3,14 +3,21 @@ package main
 import (
 	"log"
 	"log/slog"
+	"net"
+	"net/http"
 	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/ride-app/ride-service/internal/config"
-	"github.com/ride-app/ride-service/internal/db"
-	"github.com/ride-app/ride-service/internal/models"
+	pb "github.com/ride-app/shared/pkg/ride"
+	"github.com/ride-service/internal/config"
+	"github.com/ride-service/internal/db"
+	"github.com/ride-service/internal/handlers"
+	"github.com/ride-service/internal/models"
+	"github.com/ride-service/internal/repository"
+	"github.com/ride-service/internal/services"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -75,6 +82,32 @@ func main() {
 		})
 	})
 
+	repo := repository.NewRepository(database)
+	svc := services.NewRideService(repo)
+	handlers := handlers.NewRideHandlers(svc)
+
+	listener, err := net.Listen("tcp", ":5501")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	grpcServer := grpc.NewServer()
+	pb.RegisterRideServiceServer(grpcServer, handlers)
+	mux := http.NewServeMux()
+
+	go func() {
+
+		log.Println("HTTP Server :8081")
+
+		if err := http.ListenAndServe(
+			":8082",
+			mux,
+		); err != nil {
+			log.Fatal(err)
+		}
+
+	}()
 	log.Println("gRPC Server :5501")
-	r.Run(":5501")
+	if err := grpcServer.Serve(listener); err != nil {
+		log.Fatal(err)
+	}
 }

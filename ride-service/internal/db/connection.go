@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ride-app/ride-service/internal/config"
+	"github.com/ride-service/internal/config"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
