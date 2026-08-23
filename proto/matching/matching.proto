@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package matchingService;
+
+option go_package = "./shared/pkg/matching";
+
+
+service MatchingService {
+    rpc FindDriver(FindDriverRequest) returns (FindDriverResponse);
+}
+
+message FindDriverRequest {
+    int64 ride_id = 1;
+    double pickup_latitude = 2;
+    double pickup_longitude = 3;
+    string vehicle_type = 4;
+}
+
+message FindDriverResponse {
+    bool found = 1;
+    int64 driver_id = 2;
+}
