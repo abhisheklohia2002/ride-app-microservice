@@ -44,20 +44,18 @@ func (r *DriverLocationRepository) FindNearbyDrivers(
 	latitude float64,
 	longitude float64,
 	radius float64,
-) ([]redis.GeoLocation, error) {
+) ([]string, error) {
 
-	return r.rdb.GeoSearchLocation(
+	return r.rdb.GeoSearch(
 		ctx,
 		DriverLocationKey,
-		&redis.GeoSearchLocationQuery{
-			GeoSearchQuery: redis.GeoSearchQuery{
-				Longitude:  longitude,
-				Latitude:   latitude,
-				Radius:     radius,
-				RadiusUnit: "km",
-				Count:      50,
-				Sort:       "ASC",
-			},
+		&redis.GeoSearchQuery{
+			Longitude:  longitude,
+			Latitude:   latitude,
+			Radius:     radius,
+			RadiusUnit: "km",
+			Count:      50,
+			Sort:       "ASC",
 		},
 	).Result()
 }

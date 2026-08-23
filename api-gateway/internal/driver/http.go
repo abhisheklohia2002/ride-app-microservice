@@ -238,3 +238,75 @@ func HandleDriverRefresh(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(clientResp)
 }
+
+func UpdateLocation(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	if r.Method != http.MethodPatch {
+		http.Error(
+			w,
+			"method not allowed",
+			http.StatusMethodNotAllowed,
+		)
+		return
+	}
+
+	var req dto.UpdateLocationRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(
+			w,
+			"invalid request body",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	if req.Latitude < -90 || req.Latitude > 90 {
+		http.Error(
+			w,
+			"invalid latitude",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	if req.Longitude < -180 || req.Longitude > 180 {
+		http.Error(
+			w,
+			"invalid longitude",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	res, err := grpcDriverClient.DriverClient.UpdateLocation(
+		r.Context(),
+		&pb.UpdateDriverLocationRequest{
+			Latitude:  req.Latitude,
+			Longitude: req.Longitude,
+		},
+	)
+
+	if err != nil {
+		http.Error(
+			w,
+			"failed to update driver location",
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	w.Header().Set(
+		"Content-Type",
+		"application/json",
+	)
+
+	_ = json.NewEncoder(w).Encode(
+		map[string]interface{}{
+			"message": "driver location updated",
+			"data":    res,
+		},
+	)
+}

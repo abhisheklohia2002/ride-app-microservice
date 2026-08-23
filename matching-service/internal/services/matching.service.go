@@ -40,22 +40,10 @@ func (s *MatchingService) FindNearbyDrivers(
 	radius float64,
 ) ([]string, error) {
 
-	drivers, err := s.driverLocationRepo.FindNearbyDrivers(
+	return s.driverLocationRepo.FindNearbyDrivers(
 		ctx,
 		latitude,
 		longitude,
 		radius,
 	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	result := make([]string, 0, len(drivers))
-
-	for _, driver := range drivers {
-		result = append(result, driver.Name)
-	}
-
-	return result, nil
 }

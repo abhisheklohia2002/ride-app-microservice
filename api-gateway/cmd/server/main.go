@@ -9,10 +9,13 @@ import (
 	"github.com/ride-api-gateway/internal/auth"
 	driver "github.com/ride-api-gateway/internal/driver"
 	grpcDriverClient "github.com/ride-api-gateway/internal/grpc/driver"
+	grpcRideClient "github.com/ride-api-gateway/internal/grpc/ride"
+	"github.com/ride-api-gateway/internal/ride"
 )
 
 func main() {
 	grpcDriverClient.InitDriverClient()
+	grpcRideClient.InitRideClient()
 	logger := slog.New(
 		slog.NewJSONHandler(
 			os.Stdout,
@@ -45,6 +48,15 @@ func main() {
 
 	mux.HandleFunc("POST /vehicle/{userId}", driver.HandlerCreateVehicle)
 
+	mux.HandleFunc(
+		"/api/rides",
+		ride.CreateRide,
+	)
+
+	mux.HandleFunc(
+		"/api/driver/location",
+		driver.UpdateLocation,
+	)
 	log.Println("api gateway is Running at: 8080 http:localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }

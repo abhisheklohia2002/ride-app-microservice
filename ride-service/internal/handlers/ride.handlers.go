@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"log"
 	"time"
 
 	pb "github.com/ride-app/shared/pkg/ride"
@@ -45,6 +46,7 @@ func (h *RideHandlerImpl) CreateRide(
 		VehicleType: req.VehicleType,
 	}
 
+	log.Println(createReq)
 	ride, err := h.svc.CreateRide(ctx, createReq)
 	if err != nil {
 		return nil, err
