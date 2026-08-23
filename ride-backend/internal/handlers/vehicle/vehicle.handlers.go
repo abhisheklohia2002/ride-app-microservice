@@ -6,10 +6,12 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ride-app/internal/dto"
+	"github.com/ride-app/ride-driver-service/internal/dto"
 	pb "github.com/ride-app/shared/pkg/driver"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
-	vehicle "github.com/ride-app/internal/services/vehicle"
+	vehicle "github.com/ride-app/ride-driver-service/internal/services/vehicle"
 )
 
 // type Vehicle interface {
@@ -30,9 +32,13 @@ func NewVehicleHandlers(vehicleSvc vehicle.Vehicle) *vehicleImpl {
 }
 
 func (h *vehicleImpl) Create(ctx context.Context, req *pb.CreateRequestVehicle) (*pb.VehicleResponse, error) {
-	userID, ok := ctx.Value("userID").(int)
-	if !ok {
-		// invalid or missing userID
+	userID := req.UserId
+
+	if userID <= 0 {
+		return nil, status.Error(
+			codes.InvalidArgument,
+			"invalid user id",
+		)
 	}
 	createReq := dto.CreateVehicleRequest{
 		UserID:      uint(userID),

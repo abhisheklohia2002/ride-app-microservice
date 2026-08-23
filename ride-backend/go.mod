@@ -1,4 +1,4 @@
-module github.com/ride-app
+module github.com/ride-app/ride-driver-service
 
 go 1.26.5
 
@@ -7,6 +7,7 @@ require (
 	github.com/gin-gonic/gin v1.12.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/joho/godotenv v1.5.1
+	github.com/rabbitmq/amqp091-go v1.14.0
 	golang.org/x/crypto v0.55.0
 	google.golang.org/grpc v1.83.1
 	gorm.io/driver/postgres v1.6.2
@@ -55,3 +56,5 @@ require (
 )
 
 replace github.com/ride-app/shared => ../shared
+
+replace github.com/ride-matching-service => ../matching-service

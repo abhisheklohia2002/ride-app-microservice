@@ -64,6 +64,7 @@ func HandleCreateDriver(w http.ResponseWriter, r *http.Request) {
 		Email:    resp.Diver.Email,
 		Phone:    resp.Diver.Phone,
 		Role:     resp.Diver.Role,
+		ID:       resp.Diver.Id,
 	}
 
 	json.NewEncoder(w).Encode(clientResp)

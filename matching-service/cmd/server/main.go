@@ -9,13 +9,13 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-
-	"github.com/ride-matching-service/internal/config"
-	"github.com/ride-matching-service/internal/consumers"
-	"github.com/ride-matching-service/internal/messaging/rabbitmq"
-	"github.com/ride-matching-service/internal/redis"
-	"github.com/ride-matching-service/internal/repository"
-	"github.com/ride-matching-service/internal/services"
+	"github.com/ride-app/ride-matching-service/internal/config"
+	"github.com/ride-app/ride-matching-service/internal/consumers"
+	"github.com/ride-app/ride-matching-service/internal/messaging/rabbitmq"
+	"github.com/ride-app/ride-matching-service/internal/redis"
+	"github.com/ride-app/ride-matching-service/internal/repository"
+	"github.com/ride-app/ride-matching-service/internal/services"
+	// "github.com/ride-app/shared/messaging/rabbitmq"
 )
 
 func main() {
@@ -67,15 +67,14 @@ func main() {
 		driverLocationRepo,
 	)
 
-	err = matchingService.UpdateDriverLocation(
-		ctx,
-		101,
-		28.6139,
-		77.2090,
+	driverConsumer := consumers.NewDriverConsumer(
+		rabbitConsumer,
+		matchingService,
 	)
-	if err != nil {
+
+	if err := driverConsumer.Start(ctx); err != nil {
 		log.Fatalf(
-			"failed to update driver location: %v",
+			"failed to start driver consumer: %v",
 			err,
 		)
 	}
@@ -133,7 +132,8 @@ func main() {
 	})
 
 	log.Println("Matching Service HTTP server running on :8085")
-	log.Println("Matching Service RabbitMQ consumer started")
+	log.Println("Driver location consumer started")
+	log.Println("Ride searching consumer started")
 
 	if err := r.Run(":8085"); err != nil {
 		log.Fatalf(

@@ -33,7 +33,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	mux.HandleFunc("POST /register/driver", driver.HandleCreateDriver)
+	mux.HandleFunc("POST /auth/register", driver.HandleCreateDriver)
 	mux.HandleFunc("GET /login/driver", driver.HandlerLoginDriver)
 	mux.Handle("GET /self", auth.AuthMiddleware(
 		http.HandlerFunc(driver.HandleDriverSelf),
@@ -43,7 +43,7 @@ func main() {
 
 	//vehicle
 
-	mux.HandleFunc("POST /vehicle", driver.HandlerCreateVehicle)
+	mux.HandleFunc("POST /vehicle/{userId}", driver.HandlerCreateVehicle)
 
 	log.Println("api gateway is Running at: 8080 http:localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", mux))

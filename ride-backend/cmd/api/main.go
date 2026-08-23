@@ -8,24 +8,24 @@ import (
 	"os"
 	"time"
 
-	pb "github.com/ride-app/shared/pkg/driver"
-
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/ride-app/internal/auth"
-	"github.com/ride-app/internal/config"
-	dbConnection "github.com/ride-app/internal/connection"
-	"github.com/ride-app/internal/models"
-	refreshRepository "github.com/ride-app/internal/repository/refresh_tokens"
-	userRepository "github.com/ride-app/internal/repository/users"
-	vehicleRepository "github.com/ride-app/internal/repository/vehicles"
+	"github.com/ride-app/ride-driver-service/internal/config"
+	dbConnection "github.com/ride-app/ride-driver-service/internal/connection"
+	"github.com/ride-app/ride-driver-service/internal/messaging/rabbitmq"
+	"github.com/ride-app/ride-driver-service/internal/models"
+	refreshRepository "github.com/ride-app/ride-driver-service/internal/repository/refresh_tokens"
+	userRepository "github.com/ride-app/ride-driver-service/internal/repository/users"
+	vehicleRepository "github.com/ride-app/ride-driver-service/internal/repository/vehicles"
+	"github.com/ride-app/ride-driver-service/internal/auth"
+	pb "github.com/ride-app/shared/pkg/driver"
 	"google.golang.org/grpc"
 
-	userHandles "github.com/ride-app/internal/handlers/users"
-	vehicleHandles "github.com/ride-app/internal/handlers/vehicle"
-	tokenService "github.com/ride-app/internal/services/token"
-	userService "github.com/ride-app/internal/services/users"
-	vehicleService "github.com/ride-app/internal/services/vehicle"
+	userHandles "github.com/ride-app/ride-driver-service/internal/handlers/users"
+	vehicleHandles "github.com/ride-app/ride-driver-service/internal/handlers/vehicle"
+	tokenService "github.com/ride-app/ride-driver-service/internal/services/token"
+	userService "github.com/ride-app/ride-driver-service/internal/services/users"
+	vehicleService "github.com/ride-app/ride-driver-service/internal/services/vehicle"
 )
 
 func main() {
@@ -95,6 +95,18 @@ func main() {
 			"status": "ok",
 		})
 	})
+
+	rabbitPublisher, err := rabbitmq.NewPublisher(
+		cfg.RABBITMQ_URL,
+	)
+	if err != nil {
+		log.Fatalf(
+			"failed to connect RabbitMQ: %v",
+			err,
+		)
+	}
+
+	defer rabbitPublisher.Close()
 	// JWT
 	privateKey, err := auth.LoadRSAPrivateKeyFromEnv("JWT_PRIVATE_KEY")
 	if err != nil {
@@ -118,6 +130,7 @@ func main() {
 		userRepo,
 		tokenSvc,
 		refreshRepo,
+		rabbitPublisher,
 	)
 
 	vehicleSvc := vehicleService.NewVehicleService(vehicleRepo)

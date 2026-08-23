@@ -3,9 +3,9 @@ package vehicle
 import (
 	"context"
 
-	"github.com/ride-app/internal/dto"
-	"github.com/ride-app/internal/models"
-	vehicle "github.com/ride-app/internal/repository/vehicles"
+	"github.com/ride-app/ride-driver-service/internal/dto"
+	"github.com/ride-app/ride-driver-service/internal/models"
+	vehicle "github.com/ride-app/ride-driver-service/internal/repository/vehicles"
 )
 
 type Vehicle interface {

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/ride-app/internal/auth"
+	"github.com/ride-app/ride-driver-service/internal/auth"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/ride-app/internal/helpers"
+	"github.com/ride-app/ride-driver-service/internal/helpers"
 )
 
 type AuthClaims struct {

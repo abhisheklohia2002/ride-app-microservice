@@ -1,7 +1,7 @@
 package dto
 
 type CreateDriverRequest struct {
-	FullName string `json:"full_name" binding:"required"`
+	FullName string `json:"fullName" binding:"required"`
 	Email    string `json:"email" binding:"required,email"`
 	Phone    string `json:"phone" binding:"required"`
 	Password string `json:"password" binding:"required,min=8"`
@@ -9,6 +9,7 @@ type CreateDriverRequest struct {
 }
 
 type DriverResponse struct {
+	ID       int64  `json:"id"`
 	FullName string `json:"full_name" binding:"required"`
 	Email    string `json:"email" binding:"required,email"`
 	Phone    string `json:"phone" binding:"required"`
@@ -21,14 +22,14 @@ type LoginDriverRequest struct {
 }
 
 type CreateVehicleRequest struct {
-	FullName    string `json:"full_name" binding:"required"`
-	PlateNumber string `json:"plate_number" binding:"required"`
+	FullName    string `json:"fullName" binding:"required"`
+	PlateNumber string `json:"plateNumber" binding:"required"`
 	Status      bool   `json:"status"`
 }
 
 type VehicleResponse struct {
 	UserId      uint   `json:"userID"`
-	FullName    string `json:"full_name" binding:"required"`
-	PlateNumber string `json:"plate_number" binding:"required"`
+	FullName    string `json:"fullName" binding:"required"`
+	PlateNumber string `json:"plateNumber" binding:"required"`
 	Status      bool   `json:"status"`
 }

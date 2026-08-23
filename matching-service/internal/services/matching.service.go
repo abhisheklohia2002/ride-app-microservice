@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 
-	"github.com/ride-matching-service/internal/repository"
+	"github.com/ride-app/ride-matching-service/internal/repository"
 )
 
 type MatchingService struct {

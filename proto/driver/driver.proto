@@ -13,6 +13,7 @@ service DriverService {
     rpc Self(google.protobuf.Empty) returns (UserSelfResponse);
     rpc Logout(google.protobuf.Empty) returns(google.protobuf.Empty);
     rpc Refresh(google.protobuf.Empty) returns (UserResponse);
+    rpc UpdateLocation(UpdateDriverLocationRequest) returns (DriverLocationResponse);
 }
 
 service VehicleService {
@@ -21,6 +22,15 @@ service VehicleService {
     // rpc Delete(google.protobuf.Empty) returns(DeleteResponse);
     // rpc GetByID(google.protobuf.Empty) returns(VehicleResponse);
     // rpc GetAll(google.protobuf.Empty) returns(VehicleResponse);
+}
+
+message UpdateDriverLocationRequest {
+    double latitude = 1;
+    double longitude = 2;
+}
+
+message DriverLocationResponse {
+    bool success = 1;
 }
 
 message Vehicle{

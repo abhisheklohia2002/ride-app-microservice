@@ -6,32 +6,40 @@ import (
 	"log"
 
 	"github.com/rabbitmq/amqp091-go"
+
 	"github.com/ride-app/ride-matching-service/internal/messaging/rabbitmq"
 	"github.com/ride-app/ride-matching-service/internal/services"
+	// "github.com/ride-app/shared/messaging/rabbitmq"
 )
 
-type RideConsumer struct {
+type DriverLocationUpdatedEvent struct {
+	DriverID  uint64  `json:"driver_id"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+}
+
+type DriverConsumer struct {
 	rabbitConsumer  *rabbitmq.Consumer
 	matchingService *services.MatchingService
 }
 
-func NewRideConsumer(
+func NewDriverConsumer(
 	rabbitConsumer *rabbitmq.Consumer,
 	matchingService *services.MatchingService,
-) *RideConsumer {
-	return &RideConsumer{
+) *DriverConsumer {
+	return &DriverConsumer{
 		rabbitConsumer:  rabbitConsumer,
 		matchingService: matchingService,
 	}
 }
 
-func (c *RideConsumer) Start(
+func (c *DriverConsumer) Start(
 	ctx context.Context,
 ) error {
 
 	messages, err := c.rabbitConsumer.Consume(
-		"matching.ride.searching",
-		"RIDE_SEARCHING",
+		"matching.driver.location",
+		"DRIVER_LOCATION_UPDATED",
 	)
 	if err != nil {
 		return err
@@ -57,7 +65,7 @@ func (c *RideConsumer) Start(
 				); err != nil {
 
 					log.Printf(
-						"failed to process ride event: %v",
+						"failed to process driver location: %v",
 						err,
 					)
 
@@ -71,23 +79,24 @@ func (c *RideConsumer) Start(
 
 				if err := message.Ack(false); err != nil {
 					log.Printf(
-						"failed to acknowledge message: %v",
+						"failed to acknowledge driver location: %v",
 						err,
 					)
 				}
 			}
 		}
+
 	}()
 
 	return nil
 }
 
-func (c *RideConsumer) handleMessage(
+func (c *DriverConsumer) handleMessage(
 	ctx context.Context,
 	message amqp091.Delivery,
 ) error {
 
-	var event RideSearchingEvent
+	var event DriverLocationUpdatedEvent
 
 	if err := json.Unmarshal(
 		message.Body,
@@ -96,20 +105,24 @@ func (c *RideConsumer) handleMessage(
 		return err
 	}
 
-	drivers, err := c.matchingService.FindNearbyDrivers(
+	if event.DriverID == 0 {
+		return nil
+	}
+
+	if err := c.matchingService.UpdateDriverLocation(
 		ctx,
-		event.PickupLatitude,
-		event.PickupLongitude,
-		5,
-	)
-	if err != nil {
+		event.DriverID,
+		event.Latitude,
+		event.Longitude,
+	); err != nil {
 		return err
 	}
 
 	log.Printf(
-		"ride=%d nearby drivers=%v",
-		event.RideID,
-		drivers,
+		"driver location updated: driver=%d lat=%f lng=%f",
+		event.DriverID,
+		event.Latitude,
+		event.Longitude,
 	)
 
 	return nil

@@ -2,17 +2,20 @@ package users
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"strings"
 	"time"
 
-	"github.com/ride-app/internal/dto"
-	"github.com/ride-app/internal/models"
-	refresh "github.com/ride-app/internal/repository/refresh_tokens"
-	repository "github.com/ride-app/internal/repository/users"
-	token "github.com/ride-app/internal/services/token"
+	"github.com/ride-app/ride-driver-service/internal/dto"
+	"github.com/ride-app/ride-driver-service/internal/events"
+	"github.com/ride-app/ride-driver-service/internal/messaging/rabbitmq"
+	"github.com/ride-app/ride-driver-service/internal/models"
+	refresh "github.com/ride-app/ride-driver-service/internal/repository/refresh_tokens"
+	repository "github.com/ride-app/ride-driver-service/internal/repository/users"
+	token "github.com/ride-app/ride-driver-service/internal/services/token"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -23,23 +26,32 @@ type UserService interface {
 	Logout(refreshToken string) error
 	Refresh(refreshToken string) (*dto.AuthResponse, error)
 	UpdateUser(userID uint) (*dto.AuthUserResponse, error)
+	UpdateDriverLocation(
+		ctx context.Context,
+		driverID uint64,
+		latitude float64,
+		longitude float64,
+	) error
 }
 
 type UserServiceImpl struct {
 	repo             repository.UserRepository
 	tokenService     token.TokenService
 	refreshTokenRepo refresh.RefreshTokenRepository
+	publisher        *rabbitmq.Publisher
 }
 
 func NewUserService(
 	repo repository.UserRepository,
 	tokenService token.TokenService,
 	refreshTokenRepo refresh.RefreshTokenRepository,
+	publisher *rabbitmq.Publisher,
 ) UserService {
 	return &UserServiceImpl{
 		repo:             repo,
 		tokenService:     tokenService,
 		refreshTokenRepo: refreshTokenRepo,
+		publisher:        publisher,
 	}
 }
 
@@ -270,4 +282,28 @@ func (s *UserServiceImpl) UpdateUser(userID uint) (*dto.AuthUserResponse, error)
 		Role:     user.Role,
 		Phone:    user.Phone,
 	}, nil
+}
+
+func (s *UserServiceImpl) UpdateDriverLocation(
+	ctx context.Context,
+	driverID uint64,
+	latitude float64,
+	longitude float64,
+) error {
+
+	event := events.DriverLocationUpdatedEvent{
+		DriverID:  driverID,
+		Latitude:  latitude,
+		Longitude: longitude,
+	}
+
+	payload, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+
+	return s.publisher.Publish(
+		"DRIVER_LOCATION_UPDATED",
+		payload,
+	)
 }

@@ -4,8 +4,8 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/ride-app/internal/dto"
-	"github.com/ride-app/internal/services/users"
+	"github.com/ride-app/ride-driver-service/internal/dto"
+	"github.com/ride-app/ride-driver-service/internal/services/users"
 	pb "github.com/ride-app/shared/pkg/driver"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -184,5 +184,28 @@ func (h *UserHandlerImpl) Refresh(
 		},
 		AccessToken:  res.AccessToken,
 		RefreshToken: res.RefreshToken,
+	}, nil
+}
+
+func (h *UserHandlerImpl) UpdateLocation(
+	ctx context.Context,
+	req *pb.UpdateDriverLocationRequest,
+) (*pb.DriverLocationResponse, error) {
+
+	driverID := uint64(1)
+
+	err := h.service.UpdateDriverLocation(
+		ctx,
+		driverID,
+		req.Latitude,
+		req.Longitude,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.DriverLocationResponse{
+		Success: true,
 	}, nil
 }

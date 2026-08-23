@@ -23,6 +23,7 @@ type DriverServiceClient interface {
 	Self(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UserSelfResponse, error)
 	Logout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Refresh(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UserResponse, error)
+	UpdateLocation(ctx context.Context, in *UpdateDriverLocationRequest, opts ...grpc.CallOption) (*DriverLocationResponse, error)
 }
 
 type driverServiceClient struct {
@@ -78,6 +79,15 @@ func (c *driverServiceClient) Refresh(ctx context.Context, in *emptypb.Empty, op
 	return out, nil
 }
 
+func (c *driverServiceClient) UpdateLocation(ctx context.Context, in *UpdateDriverLocationRequest, opts ...grpc.CallOption) (*DriverLocationResponse, error) {
+	out := new(DriverLocationResponse)
+	err := c.cc.Invoke(ctx, "/driverService.DriverService/UpdateLocation", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DriverServiceServer is the server API for DriverService service.
 // All implementations must embed UnimplementedDriverServiceServer
 // for forward compatibility
@@ -87,6 +97,7 @@ type DriverServiceServer interface {
 	Self(context.Context, *emptypb.Empty) (*UserSelfResponse, error)
 	Logout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	Refresh(context.Context, *emptypb.Empty) (*UserResponse, error)
+	UpdateLocation(context.Context, *UpdateDriverLocationRequest) (*DriverLocationResponse, error)
 	mustEmbedUnimplementedDriverServiceServer()
 }
 
@@ -108,6 +119,9 @@ func (UnimplementedDriverServiceServer) Logout(context.Context, *emptypb.Empty) 
 }
 func (UnimplementedDriverServiceServer) Refresh(context.Context, *emptypb.Empty) (*UserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Refresh not implemented")
+}
+func (UnimplementedDriverServiceServer) UpdateLocation(context.Context, *UpdateDriverLocationRequest) (*DriverLocationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateLocation not implemented")
 }
 func (UnimplementedDriverServiceServer) mustEmbedUnimplementedDriverServiceServer() {}
 
@@ -212,6 +226,24 @@ func _DriverService_Refresh_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DriverService_UpdateLocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateDriverLocationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DriverServiceServer).UpdateLocation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/driverService.DriverService/UpdateLocation",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DriverServiceServer).UpdateLocation(ctx, req.(*UpdateDriverLocationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _DriverService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "driverService.DriverService",
 	HandlerType: (*DriverServiceServer)(nil),
@@ -235,6 +267,10 @@ var _DriverService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Refresh",
 			Handler:    _DriverService_Refresh_Handler,
+		},
+		{
+			MethodName: "UpdateLocation",
+			Handler:    _DriverService_UpdateLocation_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

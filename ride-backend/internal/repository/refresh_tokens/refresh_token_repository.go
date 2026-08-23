@@ -3,7 +3,7 @@ package repository
 import (
 	"errors"
 
-	"github.com/ride-app/internal/models"
+	"github.com/ride-app/ride-driver-service/internal/models"
 	"gorm.io/gorm"
 )
 
