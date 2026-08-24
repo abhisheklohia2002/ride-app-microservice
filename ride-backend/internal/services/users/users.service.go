@@ -73,6 +73,19 @@ func (s *UserServiceImpl) Register(ctx context.Context, req dto.RegisterUserRequ
 		return nil, errors.New("failed to hash password")
 	}
 
+	testErr := bcrypt.CompareHashAndPassword(
+		hashedPassword,
+		[]byte(req.Password),
+	)
+
+	if testErr != nil {
+		log.Printf(
+			"IMMEDIATE BCRYPT TEST FAILED: %v",
+			testErr,
+		)
+	} else {
+		log.Println("IMMEDIATE BCRYPT TEST SUCCESS")
+	}
 	user := models.User{
 		FullName:     fullName,
 		Email:        email,
@@ -121,44 +134,75 @@ func (s *UserServiceImpl) Register(ctx context.Context, req dto.RegisterUserRequ
 	return response, nil
 }
 
-func (s *UserServiceImpl) Login(ctx context.Context, req dto.LoginRequest) (*dto.AuthResponse, error) {
-	email := strings.ToLower(strings.TrimSpace(req.Email))
+func (s *UserServiceImpl) Login(
+	ctx context.Context,
+	req dto.LoginRequest,
+) (*dto.AuthResponse, error) {
+
+	email := strings.ToLower(
+		strings.TrimSpace(req.Email),
+	)
 
 	user, err := s.repo.FindByEmail(email)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find user: %w", err)
+		return nil, fmt.Errorf(
+			"failed to find user: %w",
+			err,
+		)
 	}
 
 	if user == nil {
-		return nil, errors.New("invalid email or password")
+		return nil, errors.New(
+			"invalid email or password",
+		)
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
-		return nil, errors.New("invalid email or password")
+	if err := bcrypt.CompareHashAndPassword(
+		[]byte(user.PasswordHash),
+		[]byte(req.Password),
+	); err != nil {
+		return nil, errors.New(
+			"invalid email or password",
+		)
 	}
 
 	accessToken, err := s.tokenService.GenerateAccessToken(user)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate access token: %w", err)
+		return nil, fmt.Errorf(
+			"failed to generate access token: %w",
+			err,
+		)
 	}
 
 	refreshToken, err := s.tokenService.GenerateRefreshToken(user)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+		return nil, fmt.Errorf(
+			"failed to generate refresh token: %w",
+			err,
+		)
 	}
 
-	errToken := s.refreshTokenRepo.DeleteTokensByUserID(user.ID)
-	if errToken != nil {
-		return nil, errors.New("failed to Delete refresh token")
+	if err := s.refreshTokenRepo.DeleteTokensByUserID(
+		user.ID,
+	); err != nil {
+		return nil, errors.New(
+			"failed to delete refresh token",
+		)
 	}
+	// log.Fatalln(user.ID)
 	refreshTokenRecord := models.RefreshToken{
 		Token:     refreshToken,
 		UserID:    user.ID,
 		ExpiresAt: time.Now().AddDate(1, 0, 0),
 	}
 
-	if err := s.refreshTokenRepo.Create(&refreshTokenRecord); err != nil {
-		return nil, fmt.Errorf("failed to save refresh token: %w", err)
+	if err := s.refreshTokenRepo.Create(
+		&refreshTokenRecord,
+	); err != nil {
+		return nil, fmt.Errorf(
+			"failed to save refresh token: %w",
+			err,
+		)
 	}
 
 	return &dto.AuthResponse{

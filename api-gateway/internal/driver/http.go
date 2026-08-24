@@ -2,6 +2,7 @@ package driver
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -92,6 +93,7 @@ func HandlerLoginDriver(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
+		log.Println(w, err)
 		httpx.HandleGRPCError(w, err)
 		return
 	}
@@ -112,6 +114,7 @@ func HandlerLoginDriver(w http.ResponseWriter, r *http.Request) {
 		Email:    resp.Diver.Email,
 		Phone:    resp.Diver.Phone,
 		Role:     resp.Diver.Role,
+		ID:       resp.Diver.Id,
 	}
 
 	json.NewEncoder(w).Encode(clientResp)

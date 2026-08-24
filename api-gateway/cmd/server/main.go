@@ -13,9 +13,40 @@ import (
 	"github.com/ride-api-gateway/internal/ride"
 )
 
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+
+		if origin == "http://localhost:5173" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set(
+				"Access-Control-Allow-Methods",
+				"GET, POST, PUT, PATCH, DELETE, OPTIONS",
+			)
+			w.Header().Set(
+				"Access-Control-Allow-Headers",
+				"Origin, Content-Type, Accept, Authorization, X-Requested-With, X-Client",
+			)
+			w.Header().Set(
+				"Access-Control-Expose-Headers",
+				"Content-Length",
+			)
+		}
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	grpcDriverClient.InitDriverClient()
 	grpcRideClient.InitRideClient()
+
 	logger := slog.New(
 		slog.NewJSONHandler(
 			os.Stdout,
@@ -27,36 +58,62 @@ func main() {
 	)
 
 	slog.SetDefault(logger)
+
 	mux := http.NewServeMux()
+
 	jwksURL := "http://localhost:8081/.well-known/jwks.json"
 
-	err := auth.LoadJWKS(jwksURL)
-
-	if err != nil {
+	if err := auth.LoadJWKS(jwksURL); err != nil {
 		log.Fatal(err)
 	}
 
-	mux.HandleFunc("POST /auth/register", driver.HandleCreateDriver)
-	mux.HandleFunc("GET /login/driver", driver.HandlerLoginDriver)
-	mux.Handle("GET /self", auth.AuthMiddleware(
-		http.HandlerFunc(driver.HandleDriverSelf),
-	))
-	mux.HandleFunc("POST /logout", driver.HandleDriverLogout)
-	mux.HandleFunc("GET /refresh", driver.HandleDriverRefresh)
-
-	//vehicle
-
-	mux.HandleFunc("POST /vehicle/{userId}", driver.HandlerCreateVehicle)
+	mux.HandleFunc(
+		"POST /api/auth/register",
+		driver.HandleCreateDriver,
+	)
 
 	mux.HandleFunc(
-		"/api/rides",
+		"POST /api/auth/login",
+		driver.HandlerLoginDriver,
+	)
+
+	mux.Handle(
+		"GET /self",
+		auth.AuthMiddleware(
+			http.HandlerFunc(driver.HandleDriverSelf),
+		),
+	)
+
+	mux.HandleFunc(
+		"POST /logout",
+		driver.HandleDriverLogout,
+	)
+
+	mux.HandleFunc(
+		"GET /refresh",
+		driver.HandleDriverRefresh,
+	)
+
+	mux.HandleFunc(
+		"POST /vehicle/{userId}",
+		driver.HandlerCreateVehicle,
+	)
+
+	mux.HandleFunc(
+		"POST /api/rides",
 		ride.CreateRide,
 	)
 
 	mux.HandleFunc(
-		"/api/driver/location",
+		"PATCH /api/driver/location",
 		driver.UpdateLocation,
 	)
-	log.Println("api gateway is Running at: 8080 http:localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+
+	handler := corsMiddleware(mux)
+
+	log.Println("API Gateway is running at http://localhost:8080")
+
+	if err := http.ListenAndServe(":8080", handler); err != nil {
+		log.Fatal(err)
+	}
 }
