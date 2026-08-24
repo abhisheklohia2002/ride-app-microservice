@@ -44,7 +44,6 @@ func main() {
 			err,
 		)
 	}
-
 	defer rabbitConsumer.Close()
 
 	redisClient, err := redis.NewClient(
@@ -63,8 +62,22 @@ func main() {
 		redisClient.RDB,
 	)
 
+	rabbitPublisher, err :=
+		rabbitmq.NewPublisher(
+			rabbitConsumer.Connection(),
+		)
+
+	if err != nil {
+		log.Fatalf(
+			"failed to create RabbitMQ publisher: %v",
+			err,
+		)
+	}
+
+	defer rabbitPublisher.Close()
 	matchingService := services.NewMatchingService(
 		driverLocationRepo,
+		rabbitPublisher,
 	)
 
 	driverConsumer := consumers.NewDriverConsumer(

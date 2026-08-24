@@ -85,6 +85,23 @@ func (c *Consumer) Consume(
 	)
 }
 
+func (c *Consumer) Publish(
+	routingKey string,
+	body []byte,
+) error {
+
+	return c.channel.Publish(
+		RideExchange,
+		routingKey,
+		false,
+		false,
+		amqp091.Publishing{
+			ContentType: "application/json",
+			Body:        body,
+		},
+	)
+}
+
 func (c *Consumer) Close() {
 	if c.channel != nil {
 		_ = c.channel.Close()
@@ -93,4 +110,8 @@ func (c *Consumer) Close() {
 	if c.conn != nil {
 		_ = c.conn.Close()
 	}
+}
+
+func (c *Consumer) Connection() *amqp091.Connection {
+	return c.conn
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"strconv"
+	"strings"
 
 	"github.com/rabbitmq/amqp091-go"
 	"github.com/ride-app/ride-matching-service/internal/messaging/rabbitmq"
@@ -38,7 +40,6 @@ func (c *RideConsumer) Start(
 	}
 
 	go func() {
-
 		for {
 			select {
 
@@ -96,6 +97,13 @@ func (c *RideConsumer) handleMessage(
 		return err
 	}
 
+	log.Printf(
+		"ride searching received ride=%d pickup=(%f,%f)",
+		event.RideID,
+		event.PickupLatitude,
+		event.PickupLongitude,
+	)
+
 	drivers, err := c.matchingService.FindNearbyDrivers(
 		ctx,
 		event.PickupLatitude,
@@ -106,10 +114,74 @@ func (c *RideConsumer) handleMessage(
 		return err
 	}
 
+	if len(drivers) == 0 {
+		log.Printf(
+			"no nearby driver found ride=%d",
+			event.RideID,
+		)
+
+		return nil
+	}
+
 	log.Printf(
 		"ride=%d nearby drivers=%v",
 		event.RideID,
 		drivers,
+	)
+
+	driverName := drivers[0]
+
+	driverIDString := strings.TrimPrefix(
+		driverName,
+		"driver:",
+	)
+
+	driverID, err := strconv.ParseUint(
+		driverIDString,
+		10,
+		64,
+	)
+	if err != nil {
+		return err
+	}
+
+	log.Printf(
+		"driver selected ride=%d driver=%d",
+		event.RideID,
+		driverID,
+	)
+
+	request := RideRequestedEvent{
+		RideID:      event.RideID,
+		PassengerID: event.PassengerID,
+		DriverID:    driverID,
+
+		PickupLatitude:  event.PickupLatitude,
+		PickupLongitude: event.PickupLongitude,
+
+		DropoffLatitude:  event.DropoffLatitude,
+		DropoffLongitude: event.DropoffLongitude,
+
+		VehicleType: event.VehicleType,
+	}
+
+	body, err := json.Marshal(request)
+	if err != nil {
+		return err
+	}
+
+	err = c.rabbitConsumer.Publish(
+		"RIDE_REQUESTED",
+		body,
+	)
+	if err != nil {
+		return err
+	}
+
+	log.Printf(
+		"ride request published ride=%d driver=%d",
+		event.RideID,
+		driverID,
 	)
 
 	return nil
