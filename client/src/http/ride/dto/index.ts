@@ -27,3 +27,31 @@ export interface Ride {
 export interface RideResponse {
   ride: Ride;
 }
+
+
+
+
+export type MapLocation = {
+  latitude: number;
+  longitude: number;
+};
+
+export type GeocodingResult = {
+  id: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+};
+
+export type RouteResult = {
+  distance: number;
+  duration: number;
+
+  geometry: {
+    type: "LineString";
+    coordinates: [
+      number,
+      number,
+    ][];
+  };
+};

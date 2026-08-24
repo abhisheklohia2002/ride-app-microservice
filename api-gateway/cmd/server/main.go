@@ -10,38 +10,10 @@ import (
 	driver "github.com/ride-api-gateway/internal/driver"
 	grpcDriverClient "github.com/ride-api-gateway/internal/grpc/driver"
 	grpcRideClient "github.com/ride-api-gateway/internal/grpc/ride"
+	"github.com/ride-api-gateway/internal/middleware"
 	"github.com/ride-api-gateway/internal/ride"
 )
 
-func corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origin := r.Header.Get("Origin")
-
-		if origin == "http://localhost:5173" {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
-			w.Header().Set(
-				"Access-Control-Allow-Methods",
-				"GET, POST, PUT, PATCH, DELETE, OPTIONS",
-			)
-			w.Header().Set(
-				"Access-Control-Allow-Headers",
-				"Origin, Content-Type, Accept, Authorization, X-Requested-With, X-Client",
-			)
-			w.Header().Set(
-				"Access-Control-Expose-Headers",
-				"Content-Length",
-			)
-		}
-
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}
 
 func main() {
 	grpcDriverClient.InitDriverClient()
@@ -109,7 +81,7 @@ func main() {
 		driver.UpdateLocation,
 	)
 
-	handler := corsMiddleware(mux)
+	handler := middleware.CorsMiddleware(mux)
 
 	log.Println("API Gateway is running at http://localhost:8080")
 

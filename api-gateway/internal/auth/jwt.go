@@ -27,7 +27,7 @@ func Verify(tokenString string) (*Claims, error) {
 
 			return GetPublicKey(kid)
 		},
-		jwt.WithIssuer("user-service-issuer"),
+		jwt.WithIssuer("flowboard-api"), // we have to put into the env
 	)
 
 	if err != nil {

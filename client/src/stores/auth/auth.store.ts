@@ -1,18 +1,27 @@
-
 import { create } from "zustand";
-import type { User } from "../../http/auth/types/auth.types";
 
+export type UserRole =
+  | "PASSENGER"
+  | "DRIVER";
 
-interface AuthState {
+export type User = {
+  id: string | number;
+  fullName: string;
+  email: string;
+  phone?: string;
+  role: UserRole;
+};
+
+type AuthState = {
   user: User | null;
   isAuthenticated: boolean;
 
   setUser: (user: User) => void;
   clearUser: () => void;
-}
+};
 
-export const useAuthStore =
-  create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>(
+  (set) => ({
     user: null,
     isAuthenticated: false,
 
@@ -27,4 +36,5 @@ export const useAuthStore =
         user: null,
         isAuthenticated: false,
       }),
-  }));
+  }),
+);

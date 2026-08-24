@@ -156,14 +156,31 @@ func (s *UserServiceImpl) Login(
 			"invalid email or password",
 		)
 	}
+	log.Printf(
+		"email=%q",
+		email,
+	)
 
-	if err := bcrypt.CompareHashAndPassword(
+	log.Printf(
+		"password=%q length=%d",
+		req.Password,
+		len(req.Password),
+	)
+
+	log.Printf(
+		"hash=%q length=%d",
+		user.PasswordHash,
+		len(user.PasswordHash),
+	)
+	err = bcrypt.CompareHashAndPassword(
 		[]byte(user.PasswordHash),
 		[]byte(req.Password),
-	); err != nil {
-		return nil, errors.New(
-			"invalid email or password",
-		)
+	)
+
+	if err != nil {
+		log.Printf("BCRYPT FAILED: %v", err)
+	} else {
+		log.Println("BCRYPT SUCCESS")
 	}
 
 	accessToken, err := s.tokenService.GenerateAccessToken(user)

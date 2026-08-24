@@ -1,30 +1,52 @@
 import {
   createBrowserRouter,
+  Navigate,
 } from "react-router-dom";
-import LoginPage from "../pages/auth/LoginPage";
-import RegisterPage from "../pages/auth/RegisterPage";
-import HomePage from "../pages/passenger/HomePage";
 
+import { AuthLayout } from "../layout/AuthLayout";
+import LoginPage from "../pages/auth/LoginPage";
+
+import { ProtectedRoute } from "../common/ProtectedRoute";
+
+import MainLayout from "../layout/MainLayout";
+import DriverHomePage from "../pages/driver/DriverHomePage";
 
 export const router =
   createBrowserRouter([
     {
-      path: "/",
-      element: <LoginPage />,
+      element: <AuthLayout />,
+
+      children: [
+        {
+          path: "/login",
+          element: <LoginPage />,
+        },
+      ],
     },
 
     {
-      path: "/login",
-      element: <LoginPage />,
-    },
+      element: <ProtectedRoute />,
 
-    {
-      path: "/register",
-      element: <RegisterPage />,
-    },
+      children: [
+        {
+          path: "/",
+          element: (
+            <Navigate
+              to="/passenger"
+              replace
+            />
+          ),
+        },
 
-    {
-      path: "/passenger",
-      element: <HomePage />,
+        {
+          path: "/passenger",
+          element: <MainLayout />,
+        },
+
+        {
+          path: "/driver",
+          element: <DriverHomePage />,
+        },
+      ],
     },
   ]);
