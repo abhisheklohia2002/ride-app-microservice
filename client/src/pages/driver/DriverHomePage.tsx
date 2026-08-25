@@ -31,6 +31,7 @@ import {
 import { useCurrentLocation } from "../../http/ride/hooks/use-current-location";
 import { useAuthStore } from "../../stores/auth/auth.store";
 import { useAcceptRide } from "../../http/ride/hooks/use-rides";
+import DriverActiveRidePage from "./DriverActiveRidePage";
 
 export default function DriverHomePage() {
   const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(
@@ -54,7 +55,7 @@ export default function DriverHomePage() {
   const mapRef = useRef<MapLibreMap | null>(null);
 
   const driverMarker = useRef<Marker | null>(null);
-
+  const activeRide = useDriverRideStore((state) => state.activeRide);
   const MAPTILER_API_KEY = import.meta.env.VITE_MAPTILER_API_KEY;
 
   useDriverLocation({
@@ -235,18 +236,29 @@ export default function DriverHomePage() {
     acceptRideMutation.mutate(
       {
         rideId: rideRequest.ride_id,
-        driverId: Number(driverId),
+        driverId: +driverId,
       },
       {
-        onSuccess: () => {
+        onSuccess: (response) => {
+          useDriverRideStore.getState().setActiveRide({
+            id: response.data.ride.id,
+            driverId: response.data.ride.driver_id,
+            pickupLatitude: response.data.ride.pickup.latitude,
+            pickupLongitude: response.data.ride.pickup.longitude,
+            dropoffLatitude: response.data.ride.destination.latitude,
+            dropoffLongitude: response.data.ride.destination.longitude,
+            status: response.data.ride.status,
+          });
+
           useDriverRideStore.getState().clearRideRequest();
-        },
-        onError: (error) => {
-          console.error("Failed to accept ride:", error);
         },
       },
     );
   };
+
+  if (activeRide) {
+    return <DriverActiveRidePage ride={activeRide} />;
+  }
   return (
     <>
       <main className="relative h-screen w-full overflow-hidden bg-slate-100">
