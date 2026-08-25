@@ -74,10 +74,10 @@ export const useDriverLocation = ({
             longitude,
           };
 
-          console.log(
-            "Driver location:",
-            location,
-          );
+          // console.log(
+          //   "Driver location:",
+          //   location,
+          // );
 
           // Send location to backend
           updateLocation.mutate({

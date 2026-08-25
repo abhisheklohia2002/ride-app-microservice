@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"log/slog"
 	"net"
@@ -10,14 +11,16 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/ride-app/ride-driver-service/internal/auth"
+	"github.com/ride-app/ride-driver-service/internal/common/websocket"
 	"github.com/ride-app/ride-driver-service/internal/config"
 	dbConnection "github.com/ride-app/ride-driver-service/internal/connection"
+	"github.com/ride-app/ride-driver-service/internal/handlers"
 	"github.com/ride-app/ride-driver-service/internal/messaging/rabbitmq"
 	"github.com/ride-app/ride-driver-service/internal/models"
 	refreshRepository "github.com/ride-app/ride-driver-service/internal/repository/refresh_tokens"
 	userRepository "github.com/ride-app/ride-driver-service/internal/repository/users"
 	vehicleRepository "github.com/ride-app/ride-driver-service/internal/repository/vehicles"
-	"github.com/ride-app/ride-driver-service/internal/auth"
 	pb "github.com/ride-app/shared/pkg/driver"
 	"google.golang.org/grpc"
 
@@ -30,6 +33,7 @@ import (
 
 func main() {
 	cfg := config.MustLoad()
+	ctx := context.Background()
 
 	logger := slog.New(
 		slog.NewJSONHandler(
@@ -96,6 +100,18 @@ func main() {
 		})
 	})
 
+	rabbitConsumer, err := rabbitmq.NewConsumer(
+		cfg.RABBITMQ_URL,
+	)
+	if err != nil {
+		log.Fatalf(
+			"failed to connect RabbitMQ consumer: %v",
+			err,
+		)
+	}
+
+	defer rabbitConsumer.Close()
+
 	rabbitPublisher, err := rabbitmq.NewPublisher(
 		cfg.RABBITMQ_URL,
 	)
@@ -107,6 +123,22 @@ func main() {
 	}
 
 	defer rabbitPublisher.Close()
+
+	hub := websocket.NewHub()
+
+	rideRequestConsumer :=
+		rabbitmq.NewRideRequestConsumer(
+			rabbitConsumer,
+			hub,
+		)
+
+	if err := rideRequestConsumer.Start(ctx); err != nil {
+		log.Fatalf(
+			"failed to start ride request consumer: %v",
+			err,
+		)
+	}
+
 	// JWT
 	privateKey, err := auth.LoadRSAPrivateKeyFromEnv("JWT_PRIVATE_KEY")
 	if err != nil {
@@ -162,6 +194,10 @@ func main() {
 		http.ServeFile(w, r, jwksPath)
 	})
 
+	mux.HandleFunc(
+		"/ws/driver",
+		handlers.DriverWebSocket(hub),
+	)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
