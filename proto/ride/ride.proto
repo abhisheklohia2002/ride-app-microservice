@@ -59,6 +59,7 @@ message CreateRideRequest {
     Location pickup = 1;
     Location destination = 2;
     string vehicle_type = 3;
+    int64 passengerID = 4;
 }
 
 message RideResponse {

@@ -289,6 +289,7 @@ func UpdateLocation(
 		&pb.UpdateDriverLocationRequest{
 			Latitude:  req.Latitude,
 			Longitude: req.Longitude,
+			DriverId:  uint64(req.DriverId),
 		},
 	)
 

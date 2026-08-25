@@ -1,7 +1,4 @@
-import {
-  useCallback,
-  useState,
-} from "react";
+import { useCallback, useState } from "react";
 
 import { motion } from "motion/react";
 import { useCurrentLocation } from "../../http/ride/hooks/use-current-location";
@@ -11,147 +8,95 @@ import type { Destination } from "../../http/ride/components/DestinationSearch";
 import type { VehicleType } from "../../http/ride/dto";
 import RideMap from "../../http/ride/components/RideMap";
 import DestinationSearch from "../../http/ride/components/DestinationSearch";
-
-
+import { useAuthStore } from "../../stores/auth/auth.store";
 
 export default function HomePage() {
-  const {
-    location,
-    loading,
-    error,
-  } =
-    useCurrentLocation();
+  const { location, loading, error } = useCurrentLocation();
+  const passengerId = useAuthStore((state) => state.user?.id);
+  const createRide = useCreateRide();
 
-  const createRide =
-    useCreateRide();
+  const setRide = useRideStore((state) => state.setRide);
 
-  const setRide =
-    useRideStore(
-      (state) =>
-        state.setRide,
-    );
+  const [destination, setDestination] = useState<Destination | null>(null);
 
-  const [destination, setDestination] =
-    useState<Destination | null>(
-      null,
-    );
+  const [vehicle, setVehicle] = useState<VehicleType>("CAR");
 
-  const [vehicle, setVehicle] =
-    useState<VehicleType>(
-      "CAR",
-    );
+  const [distance, setDistance] = useState<number | null>(null);
 
-  const [distance, setDistance] =
-    useState<number | null>(
-      null,
-    );
-
-  const [duration, setDuration] =
-    useState<number | null>(
-      null,
-    );
+  const [duration, setDuration] = useState<number | null>(null);
 
   /*
    * Destination selected
    */
 
-  const handleDestinationSelect =
-    useCallback(
-      (
-        destination: Destination,
-      ) => {
-        setDestination(
-          destination,
-        );
+  const handleDestinationSelect = useCallback((destination: Destination) => {
+    setDestination(destination);
 
-        setDistance(null);
-        setDuration(null);
-      },
-      [],
-    );
+    setDistance(null);
+    setDuration(null);
+  }, []);
 
   /*
    * Route calculated
    */
 
-  const handleRouteChange =
-    useCallback(
-      (
-        distanceMeters: number,
-        durationMillis: number,
-      ) => {
-        setDistance(
-          distanceMeters,
-        );
+  const handleRouteChange = useCallback(
+    (distanceMeters: number, durationMillis: number) => {
+      setDistance(distanceMeters);
 
-        setDuration(
-          durationMillis,
-        );
-      },
-      [],
-    );
+      setDuration(durationMillis);
+    },
+    [],
+  );
 
   /*
    * Create ride
    */
 
-  const handleRequestRide =
-    () => {
-      if (
-        !location ||
-        !destination
-      ) {
-        return;
-      }
+  const handleRequestRide = () => {
+    if (!location || !destination) {
+      return;
+    }
 
-      createRide.mutate(
-        {
-          pickup: {
-            latitude:
-              location.latitude,
+    createRide.mutate(
+      {
+        pickup: {
+          latitude: location.latitude,
 
-            longitude:
-              location.longitude,
+          longitude: location.longitude,
 
-            address:
-              "Current Location",
-          },
-
-          destination: {
-            latitude:
-              destination.latitude,
-
-            longitude:
-              destination.longitude,
-
-            address:
-              destination.address,
-          },
-
-          vehicle_type:
-            vehicle,
+          address: "Current Location",
         },
 
-        {
-          onSuccess: (
-            response,
-          ) => {
-            const ride =
-              response.ride;
+        destination: {
+          latitude: destination.latitude,
 
-            if (!ride) {
-              return;
-            }
+          longitude: destination.longitude,
 
-            setRide(
-              ride.id,
-
-              ride.status as any,
-            );
-          },
+          address: destination.address,
         },
-      );
-    };
+
+        vehicle_type: vehicle,
+        passengerID: Number(passengerId),
+      },
+
+      {
+        onSuccess: (response) => {
+          const ride = response.ride;
+
+          if (!ride) {
+            return;
+          }
+
+          setRide(
+            ride.id,
+
+            ride.status as any,
+          );
+        },
+      },
+    );
+  };
 
   /*
    * Loading
@@ -175,27 +120,19 @@ export default function HomePage() {
    * Location error
    */
 
-  if (
-    error ||
-    !location
-  ) {
+  if (error || !location) {
     return (
       <main className="flex min-h-screen items-center justify-center px-4">
         <div className="rounded-2xl bg-white p-6 text-center shadow-xl">
-          <h2 className="text-xl font-semibold">
-            Location unavailable
-          </h2>
+          <h2 className="text-xl font-semibold">Location unavailable</h2>
 
           <p className="mt-2 text-sm text-slate-500">
-            {error ??
-              "Unable to get your location"}
+            {error ?? "Unable to get your location"}
           </p>
 
           <button
             type="button"
-            onClick={() =>
-              window.location.reload()
-            }
+            onClick={() => window.location.reload()}
             className="mt-5 rounded-xl bg-slate-900 px-5 py-3 text-white"
           >
             Try Again
@@ -205,19 +142,9 @@ export default function HomePage() {
     );
   }
 
-  const distanceKm =
-    distance != null
-      ? (
-          distance / 1000
-        ).toFixed(1)
-      : null;
+  const distanceKm = distance != null ? (distance / 1000).toFixed(1) : null;
 
-  const durationMinutes =
-    duration != null
-      ? Math.ceil(
-          duration / 60000,
-        )
-      : null;
+  const durationMinutes = duration != null ? Math.ceil(duration / 60000) : null;
 
   return (
     <main className="h-screen overflow-hidden">
@@ -226,26 +153,20 @@ export default function HomePage() {
 
         <RideMap
           pickup={{
-            latitude:
-              location.latitude,
+            latitude: location.latitude,
 
-            longitude:
-              location.longitude,
+            longitude: location.longitude,
           }}
           destination={
             destination
               ? {
-                  latitude:
-                    destination.latitude,
+                  latitude: destination.latitude,
 
-                  longitude:
-                    destination.longitude,
+                  longitude: destination.longitude,
                 }
               : null
           }
-          onRouteChange={
-            handleRouteChange
-          }
+          onRouteChange={handleRouteChange}
         />
 
         {/* ================= BOOKING CARD ================= */}
@@ -264,9 +185,7 @@ export default function HomePage() {
           {/* HEADER */}
 
           <div>
-            <p className="text-sm font-medium text-slate-400">
-              Ride
-            </p>
+            <p className="text-sm font-medium text-slate-400">Ride</p>
 
             <h1 className="mt-1 text-2xl font-bold text-slate-900">
               Where are you going?
@@ -284,9 +203,7 @@ export default function HomePage() {
               </div>
 
               <div className="flex-1 rounded-xl bg-slate-100 px-4 py-3">
-                <p className="text-xs text-slate-400">
-                  Pickup
-                </p>
+                <p className="text-xs text-slate-400">Pickup</p>
 
                 <p className="text-sm font-medium text-slate-800">
                   Current location
@@ -307,15 +224,9 @@ export default function HomePage() {
 
               <div className="flex-1">
                 <DestinationSearch
-                  latitude={
-                    location.latitude
-                  }
-                  longitude={
-                    location.longitude
-                  }
-                  onSelect={
-                    handleDestinationSelect
-                  }
+                  latitude={location.latitude}
+                  longitude={location.longitude}
+                  onSelect={handleDestinationSelect}
                 />
               </div>
             </div>
@@ -335,76 +246,52 @@ export default function HomePage() {
               }}
               className="mt-4 rounded-xl bg-slate-50 p-4"
             >
-              <p className="text-xs text-slate-400">
-                Destination
-              </p>
+              <p className="text-xs text-slate-400">Destination</p>
 
               <p className="mt-1 text-sm font-semibold text-slate-800">
                 {destination.address}
               </p>
 
-              {distanceKm &&
-                durationMinutes && (
-                  <div className="mt-3 flex items-center gap-4">
-                    <div>
-                      <p className="text-xs text-slate-400">
-                        Distance
-                      </p>
+              {distanceKm && durationMinutes && (
+                <div className="mt-3 flex items-center gap-4">
+                  <div>
+                    <p className="text-xs text-slate-400">Distance</p>
 
-                      <p className="text-sm font-semibold">
-                        {distanceKm} km
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-slate-400">
-                        ETA
-                      </p>
-
-                      <p className="text-sm font-semibold">
-                        {durationMinutes} min
-                      </p>
-                    </div>
+                    <p className="text-sm font-semibold">{distanceKm} km</p>
                   </div>
-                )}
+
+                  <div>
+                    <p className="text-xs text-slate-400">ETA</p>
+
+                    <p className="text-sm font-semibold">
+                      {durationMinutes} min
+                    </p>
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
 
           {/* VEHICLE */}
 
           <div className="mt-5">
-            <p className="mb-3 text-sm font-semibold">
-              Choose your ride
-            </p>
+            <p className="mb-3 text-sm font-semibold">Choose your ride</p>
 
             <div className="grid grid-cols-3 gap-2">
-              {(
-                [
-                  "BIKE",
-                  "CAR",
-                  "PREMIUM",
-                ] as VehicleType[]
-              ).map(
-                (type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() =>
-                      setVehicle(
-                        type,
-                      )
-                    }
-                    className={`rounded-xl border px-3 py-3 text-sm font-medium transition ${
-                      vehicle ===
-                      type
-                        ? "border-slate-900 bg-slate-900 text-white"
-                        : "border-slate-200 bg-white text-slate-700"
-                    }`}
-                  >
-                    {type}
-                  </button>
-                ),
-              )}
+              {(["BIKE", "CAR", "PREMIUM"] as VehicleType[]).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setVehicle(type)}
+                  className={`rounded-xl border px-3 py-3 text-sm font-medium transition ${
+                    vehicle === type
+                      ? "border-slate-900 bg-slate-900 text-white"
+                      : "border-slate-200 bg-white text-slate-700"
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -415,13 +302,8 @@ export default function HomePage() {
               scale: 0.98,
             }}
             type="button"
-            disabled={
-              !destination ||
-              createRide.isPending
-            }
-            onClick={
-              handleRequestRide
-            }
+            disabled={!destination || createRide.isPending}
+            onClick={handleRequestRide}
             className="mt-5 w-full rounded-xl bg-slate-900 py-4 font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {createRide.isPending

@@ -35,6 +35,7 @@ type VehicleResponse struct {
 }
 
 type UpdateLocationRequest struct {
+	DriverId  int64   `json:"driverId"`
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
 }

@@ -23,6 +23,7 @@ type CreateRideRequest struct {
 	} `json:"destination"`
 
 	VehicleType string `json:"vehicle_type"`
+	PassengerID int64  `json:"passengerId"`
 }
 
 func CreateRide(w http.ResponseWriter, r *http.Request) {
@@ -61,6 +62,7 @@ func CreateRide(w http.ResponseWriter, r *http.Request) {
 				Address:   req.Destination.Address,
 			},
 			VehicleType: req.VehicleType,
+			PassengerID: req.PassengerID,
 		},
 	)
 

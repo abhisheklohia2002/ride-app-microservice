@@ -27,6 +27,7 @@ service VehicleService {
 message UpdateDriverLocationRequest {
     double latitude = 1;
     double longitude = 2;
+     uint64 driver_id = 3;
 }
 
 message DriverLocationResponse {

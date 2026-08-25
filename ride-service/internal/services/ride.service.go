@@ -54,7 +54,7 @@ func (s serviceImpl) CreateRide(
 	}
 
 	ride := models.Ride{
-		PassengerID: req.PassengerID,
+		PassengerID: uint64(req.PassengerID),
 
 		PickupLatitude:  req.Pickup.Latitude,
 		PickupLongitude: req.Pickup.Longitude,

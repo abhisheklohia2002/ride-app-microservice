@@ -3,6 +3,7 @@ import { api } from "../../lib/axios";
 export interface DriverLocationRequest {
   latitude: number;
   longitude: number;
+  driverId:number | string;
 }
 
 export const updateDriverLocation = async (

@@ -39,22 +39,23 @@ func (c *DriverConsumer) Start(
 
 	messages, err := c.rabbitConsumer.Consume(
 		"matching.driver.location",
+		rabbitmq.DriverExchange,
 		"DRIVER_LOCATION_UPDATED",
 	)
+
 	if err != nil {
 		return err
 	}
 
-	go func() {
+	log.Println("driver location consumer started")
 
+	go func() {
 		for {
 			select {
-
 			case <-ctx.Done():
 				return
 
 			case message, ok := <-messages:
-
 				if !ok {
 					return
 				}
@@ -85,7 +86,6 @@ func (c *DriverConsumer) Start(
 				}
 			}
 		}
-
 	}()
 
 	return nil

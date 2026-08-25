@@ -2,6 +2,7 @@ package users
 
 import (
 	"context"
+	"log"
 	"strconv"
 
 	"github.com/ride-app/ride-driver-service/internal/dto"
@@ -192,11 +193,15 @@ func (h *UserHandlerImpl) UpdateLocation(
 	req *pb.UpdateDriverLocationRequest,
 ) (*pb.DriverLocationResponse, error) {
 
-	driverID := uint64(1)
-
+	log.Printf(
+		"UPDATE LOCATION driver=%d lat=%f lon=%f",
+		req.DriverId,
+		req.Latitude,
+		req.Longitude,
+	)
 	err := h.service.UpdateDriverLocation(
 		ctx,
-		driverID,
+		req.DriverId,
 		req.Latitude,
 		req.Longitude,
 	)

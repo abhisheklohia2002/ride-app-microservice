@@ -32,6 +32,7 @@ import { useRideStore } from "../stores/ride/ride.store";
 import type { VehicleType } from "../http/ride/dto";
 
 import type { Destination } from "../http/ride/components/DestinationSearch";
+import { useAuthStore } from "../stores/auth/auth.store";
 
 type SearchResult = {
   id: string;
@@ -44,7 +45,7 @@ export default function MainLayout() {
   const { location, loading, error } = useCurrentLocation();
 
   const createRide = useCreateRide();
-
+  const passengerId = useAuthStore((state) => state.user?.id);
   const setRide = useRideStore((state) => state.setRide);
 
   const [destination, setDestination] = useState<Destination | null>(null);
@@ -64,7 +65,6 @@ export default function MainLayout() {
   const destinationMarker = useRef<Marker | null>(null);
 
   const MAPTILER_API_KEY = import.meta.env.VITE_MAPTILER_API_KEY;
-
 
   useEffect(() => {
     if (!location || !mapContainer.current || mapRef.current) {
@@ -363,6 +363,7 @@ export default function MainLayout() {
         },
 
         vehicle_type: vehicle,
+        passengerID: Number(passengerId),
       },
 
       {

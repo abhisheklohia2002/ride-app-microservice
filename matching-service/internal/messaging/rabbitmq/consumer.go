@@ -5,7 +5,8 @@ import (
 )
 
 const (
-	RideExchange = "ride.events"
+	RideExchange   = "ride.events"
+	DriverExchange = "driver.events"
 )
 
 type Consumer struct {
@@ -25,19 +26,25 @@ func NewConsumer(url string) (*Consumer, error) {
 		return nil, err
 	}
 
-	err = channel.ExchangeDeclare(
+	for _, exchange := range []string{
 		RideExchange,
-		"topic",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		_ = channel.Close()
-		_ = conn.Close()
-		return nil, err
+		DriverExchange,
+	} {
+		err = channel.ExchangeDeclare(
+			exchange,
+			"topic",
+			true,
+			false,
+			false,
+			false,
+			nil,
+		)
+
+		if err != nil {
+			_ = channel.Close()
+			_ = conn.Close()
+			return nil, err
+		}
 	}
 
 	return &Consumer{
@@ -48,6 +55,7 @@ func NewConsumer(url string) (*Consumer, error) {
 
 func (c *Consumer) Consume(
 	queueName string,
+	exchange string,
 	routingKey string,
 ) (<-chan amqp091.Delivery, error) {
 
@@ -59,6 +67,7 @@ func (c *Consumer) Consume(
 		false,
 		nil,
 	)
+
 	if err != nil {
 		return nil, err
 	}
@@ -66,10 +75,11 @@ func (c *Consumer) Consume(
 	err = c.channel.QueueBind(
 		queue.Name,
 		routingKey,
-		RideExchange,
+		exchange,
 		false,
 		nil,
 	)
+
 	if err != nil {
 		return nil, err
 	}
@@ -86,12 +96,12 @@ func (c *Consumer) Consume(
 }
 
 func (c *Consumer) Publish(
+	exchange string,
 	routingKey string,
 	body []byte,
 ) error {
-
 	return c.channel.Publish(
-		RideExchange,
+		exchange,
 		routingKey,
 		false,
 		false,

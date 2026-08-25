@@ -29,7 +29,7 @@ func (h *RideHandlerImpl) CreateRide(
 ) (*pb.RideResponse, error) {
 
 	createReq := dto.CreateRequestRide{
-		PassengerID: 1,
+		PassengerID: req.PassengerID,
 
 		Pickup: dto.Location{
 			Latitude:  req.Pickup.Latitude,

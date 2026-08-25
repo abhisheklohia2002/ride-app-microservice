@@ -7,7 +7,7 @@ type Location struct {
 }
 
 type CreateRequestRide struct {
-	PassengerID uint64
+	PassengerID int64
 
 	Pickup      Location
 	Destination Location

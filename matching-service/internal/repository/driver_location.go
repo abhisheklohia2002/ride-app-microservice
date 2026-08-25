@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -28,7 +29,14 @@ func (r *DriverLocationRepository) UpdateLocation(
 	longitude float64,
 ) error {
 
-	return r.rdb.GeoAdd(
+	log.Printf(
+		"UPDATING DRIVER LOCATION driver=%d lat=%f lon=%f",
+		driverID,
+		latitude,
+		longitude,
+	)
+
+	err := r.rdb.GeoAdd(
 		ctx,
 		DriverLocationKey,
 		&redis.GeoLocation{
@@ -37,6 +45,31 @@ func (r *DriverLocationRepository) UpdateLocation(
 			Latitude:  latitude,
 		},
 	).Err()
+
+	if err != nil {
+		return err
+	}
+
+	location, err := r.rdb.GeoPos(
+		ctx,
+		DriverLocationKey,
+		driverIDString(driverID),
+	).Result()
+
+	if err != nil {
+		return err
+	}
+
+	if len(location) > 0 && location[0] != nil {
+		log.Printf(
+			"REDIS DRIVER LOCATION driver=%d longitude=%f latitude=%f",
+			driverID,
+			location[0].Longitude,
+			location[0].Latitude,
+		)
+	}
+
+	return nil
 }
 
 func (r *DriverLocationRepository) FindNearbyDrivers(

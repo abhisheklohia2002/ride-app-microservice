@@ -33,6 +33,7 @@ func (c *RideConsumer) Start(
 
 	messages, err := c.rabbitConsumer.Consume(
 		"matching.ride.searching",
+		rabbitmq.RideExchange,
 		"RIDE_SEARCHING",
 	)
 	if err != nil {
@@ -171,6 +172,7 @@ func (c *RideConsumer) handleMessage(
 	}
 
 	err = c.rabbitConsumer.Publish(
+		rabbitmq.RideExchange,
 		"RIDE_REQUESTED",
 		body,
 	)

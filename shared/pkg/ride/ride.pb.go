@@ -252,6 +252,7 @@ type CreateRideRequest struct {
 	Pickup        *Location              `protobuf:"bytes,1,opt,name=pickup,proto3" json:"pickup,omitempty"`
 	Destination   *Location              `protobuf:"bytes,2,opt,name=destination,proto3" json:"destination,omitempty"`
 	VehicleType   string                 `protobuf:"bytes,3,opt,name=vehicle_type,json=vehicleType,proto3" json:"vehicle_type,omitempty"`
+	PassengerID   int64                  `protobuf:"varint,4,opt,name=passengerID,proto3" json:"passengerID,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -305,6 +306,13 @@ func (x *CreateRideRequest) GetVehicleType() string {
 		return x.VehicleType
 	}
 	return ""
+}
+
+func (x *CreateRideRequest) GetPassengerID() int64 {
+	if x != nil {
+		return x.PassengerID
+	}
+	return 0
 }
 
 type RideResponse struct {
@@ -382,11 +390,12 @@ const file_proto_ride_ride_proto_rawDesc = "" +
 	"\bLocation\x12\x1a\n" +
 	"\blatitude\x18\x01 \x01(\x01R\blatitude\x12\x1c\n" +
 	"\tlongitude\x18\x02 \x01(\x01R\tlongitude\x12\x18\n" +
-	"\aaddress\x18\x03 \x01(\tR\aaddress\"\x9e\x01\n" +
+	"\aaddress\x18\x03 \x01(\tR\aaddress\"\xc0\x01\n" +
 	"\x11CreateRideRequest\x12-\n" +
 	"\x06pickup\x18\x01 \x01(\v2\x15.rideService.LocationR\x06pickup\x127\n" +
 	"\vdestination\x18\x02 \x01(\v2\x15.rideService.LocationR\vdestination\x12!\n" +
-	"\fvehicle_type\x18\x03 \x01(\tR\vvehicleType\"5\n" +
+	"\fvehicle_type\x18\x03 \x01(\tR\vvehicleType\x12 \n" +
+	"\vpassengerID\x18\x04 \x01(\x03R\vpassengerID\"5\n" +
 	"\fRideResponse\x12%\n" +
 	"\x04ride\x18\x01 \x01(\v2\x11.rideService.RideR\x04ride2V\n" +
 	"\vRideService\x12G\n" +

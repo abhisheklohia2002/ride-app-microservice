@@ -43,6 +43,7 @@ import {
 import {
   useCurrentLocation,
 } from "../../http/ride/hooks/use-current-location";
+import { useAuthStore } from "../../stores/auth/auth.store";
 
 export default function DriverHomePage() {
   const [driverLocation, setDriverLocation] =
@@ -52,6 +53,7 @@ export default function DriverHomePage() {
     location,
   } = useCurrentLocation();
 
+  const driverId  = useAuthStore((state)=>state.user?.id)
   const isOnline = useDriverStore(
     (state) => state.isOnline,
   );
@@ -254,10 +256,9 @@ export default function DriverHomePage() {
       return;
     }
 
-    const driverId = 101;
 
     connectDriverSocket(
-      driverId,
+      Number(driverId),
       (message) => {
         if (
           message.type ===

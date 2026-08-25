@@ -26,6 +26,7 @@ type UpdateDriverLocationRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Latitude      float64                `protobuf:"fixed64,1,opt,name=latitude,proto3" json:"latitude,omitempty"`
 	Longitude     float64                `protobuf:"fixed64,2,opt,name=longitude,proto3" json:"longitude,omitempty"`
+	DriverId      uint64                 `protobuf:"varint,3,opt,name=driver_id,json=driverId,proto3" json:"driver_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -70,6 +71,13 @@ func (x *UpdateDriverLocationRequest) GetLatitude() float64 {
 func (x *UpdateDriverLocationRequest) GetLongitude() float64 {
 	if x != nil {
 		return x.Longitude
+	}
+	return 0
+}
+
+func (x *UpdateDriverLocationRequest) GetDriverId() uint64 {
+	if x != nil {
+		return x.DriverId
 	}
 	return 0
 }
@@ -838,10 +846,11 @@ var File_proto_driver_driver_proto protoreflect.FileDescriptor
 
 const file_proto_driver_driver_proto_rawDesc = "" +
 	"\n" +
-	"\x19proto/driver/driver.proto\x12\rdriverService\x1a\x1bgoogle/protobuf/empty.proto\"W\n" +
+	"\x19proto/driver/driver.proto\x12\rdriverService\x1a\x1bgoogle/protobuf/empty.proto\"t\n" +
 	"\x1bUpdateDriverLocationRequest\x12\x1a\n" +
 	"\blatitude\x18\x01 \x01(\x01R\blatitude\x12\x1c\n" +
-	"\tlongitude\x18\x02 \x01(\x01R\tlongitude\"2\n" +
+	"\tlongitude\x18\x02 \x01(\x01R\tlongitude\x12\x1b\n" +
+	"\tdriver_id\x18\x03 \x01(\x04R\bdriverId\"2\n" +
 	"\x16DriverLocationResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\"\x87\x01\n" +
 	"\aVehicle\x12\x0e\n" +

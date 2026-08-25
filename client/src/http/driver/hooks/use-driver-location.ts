@@ -6,6 +6,7 @@ import {
 import {
   useUpdateDriverLocation,
 } from "./use-driver";
+import { useAuthStore } from "../../../stores/auth/auth.store";
 
 export interface DriverLocation {
   latitude: number;
@@ -26,7 +27,9 @@ export const useDriverLocation = ({
 }: Props) => {
   const watchId =
     useRef<number | null>(null);
-
+const setDriver = useAuthStore(
+  (state) => state.user?.id,
+);
   const updateLocation =
     useUpdateDriverLocation();
 
@@ -83,6 +86,7 @@ export const useDriverLocation = ({
           updateLocation.mutate({
             latitude,
             longitude,
+            driverId:Number(setDriver),
           });
 
           // Update frontend map

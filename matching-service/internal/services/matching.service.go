@@ -114,7 +114,7 @@ func (s *MatchingService) MatchRide(
 
 	return s.publisher.Publish(
 		ctx,
-		"ride.requested",
+		"RIDE_REQUESTED",
 		request,
 	)
 }

@@ -13,6 +13,7 @@ export interface CreateRideRequest {
   pickup: Location;
   destination: Location;
   vehicle_type: VehicleType;
+  passengerID:number | string;
 }
 
 export interface Ride {
