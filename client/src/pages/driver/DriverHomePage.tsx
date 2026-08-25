@@ -160,11 +160,11 @@ export default function DriverHomePage() {
     }
 
     if (driverLocation) {
-      mapRef.current.easeTo({
-        center: lngLat,
-        zoom: 15,
-        duration: 800,
-      });
+      // mapRef.current.easeTo({
+      //   center: lngLat,
+      //   zoom: 15,
+      //   duration: 800,
+      // });
     }
   }, [driverLocation, location]);
 

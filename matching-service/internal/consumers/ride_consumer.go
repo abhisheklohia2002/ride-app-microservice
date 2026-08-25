@@ -109,7 +109,7 @@ func (c *RideConsumer) handleMessage(
 		ctx,
 		event.PickupLatitude,
 		event.PickupLongitude,
-		5,
+		15,
 	)
 	if err != nil {
 		return err
