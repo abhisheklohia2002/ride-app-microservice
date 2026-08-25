@@ -13,3 +13,19 @@ export const createRide = async (
 
   return data;
 };
+
+
+
+export const acceptRide = async (
+  rideId: number,
+  driverId: number,
+) => {
+  const { data } = await api.post(
+    `/api/rides/${rideId}/accept`,
+    {
+      driverId,
+    },
+  );
+
+  return data;
+};

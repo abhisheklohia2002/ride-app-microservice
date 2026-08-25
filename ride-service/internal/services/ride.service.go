@@ -26,6 +26,10 @@ type Service interface {
 		toStatus enums.RideStatus,
 		changedBy string,
 	) (*models.Ride, error)
+	AcceptRide(
+		ctx context.Context,
+		req dto.AcceptRideRequest,
+	) (*models.Ride, error)
 }
 
 type serviceImpl struct {
@@ -116,11 +120,13 @@ func (s serviceImpl) CreateRide(
 			}
 
 			searchingEvent := events.RideSearchingEvent{
-				RideID:          createdRide.ID,
-				PassengerID:     createdRide.PassengerID,
-				PickupLatitude:  createdRide.PickupLatitude,
-				PickupLongitude: createdRide.PickupLongitude,
-				VehicleType:     req.VehicleType,
+				RideID:           int64(createdRide.ID),
+				PassengerID:      int64(createdRide.PassengerID),
+				PickupLatitude:   createdRide.PickupLatitude,
+				PickupLongitude:  createdRide.PickupLongitude,
+				DropoffLatitude:  createdRide.DropoffLatitude,
+				DropoffLongitude: createdRide.DropoffLongitude,
+				VehicleType:      req.VehicleType,
 			}
 
 			payload, err := json.Marshal(searchingEvent)
@@ -230,4 +236,116 @@ func (s serviceImpl) TransitionRide(
 	}
 
 	return updatedRide, nil
+}
+
+func (s serviceImpl) AcceptRide(
+	ctx context.Context,
+	req dto.AcceptRideRequest,
+) (*models.Ride, error) {
+
+	if req.RideID == 0 {
+		return nil, errors.New("ride id is required")
+	}
+
+	if req.DriverID == 0 {
+		return nil, errors.New("driver id is required")
+	}
+
+	var ride *models.Ride
+
+	err := s.repo.Transaction(
+		ctx,
+		func(tx *gorm.DB) error {
+
+			var err error
+
+			ride, err = s.repo.GetRideByID(
+				ctx,
+				tx,
+				uint64(req.RideID),
+			)
+			if err != nil {
+				return err
+			}
+
+			if ride == nil {
+				return errors.New("ride not found")
+			}
+
+			if ride.Status != string(
+				enums.RideStatusSearchingDriver,
+			) {
+				return errors.New(
+					"ride is not available for assignment",
+				)
+			}
+
+			ride.DriverID = &req.DriverID
+			ride.Status = string(
+				enums.RideStatusDriverAssigned,
+			)
+
+			updatedRide, err :=
+				s.repo.UpdateRideTx(
+					ctx,
+					tx,
+					ride,
+				)
+			if err != nil {
+				return err
+			}
+
+			history := models.RideStatusHistory{
+				RideID:     updatedRide.ID,
+				FromStatus: string(enums.RideStatusSearchingDriver),
+				ToStatus:   string(enums.RideStatusDriverAssigned),
+				ChangedBy:  "DRIVER",
+			}
+
+			if err := s.repo.CreateRideStatusHistory(
+				ctx,
+				tx,
+				history,
+			); err != nil {
+				return err
+			}
+
+			event := events.RideAssignedEvent{
+				RideID:      int64(updatedRide.ID),
+				PassengerID: updatedRide.PassengerID,
+				DriverID:    req.DriverID,
+			}
+
+			payload, err := json.Marshal(event)
+			if err != nil {
+				return err
+			}
+
+			outboxEvent := models.OutboxEvent{
+				EventType:     "RIDE_ASSIGNED",
+				AggregateType: "RIDE",
+				AggregateID:   updatedRide.ID,
+				Payload:       string(payload),
+				Status:        string(enums.OutboxStatusPending),
+			}
+
+			if err := s.repo.CreateOutboxEvent(
+				ctx,
+				tx,
+				outboxEvent,
+			); err != nil {
+				return err
+			}
+
+			ride = updatedRide
+
+			return nil
+		},
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return ride, nil
 }

@@ -14,3 +14,8 @@ type CreateRequestRide struct {
 
 	VehicleType string
 }
+
+type AcceptRideRequest struct {
+	RideID   int64
+	DriverID uint64
+}

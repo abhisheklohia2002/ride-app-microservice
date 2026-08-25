@@ -1,14 +1,6 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 
-import {
-  Map as MapLibreMap,
-  Marker,
-  NavigationControl,
-} from "maplibre-gl";
+import { Map as MapLibreMap, Marker, NavigationControl } from "maplibre-gl";
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -22,144 +14,91 @@ import {
   Route,
 } from "lucide-react";
 
-import {
-  useDriverStore,
-} from "../../stores/driver/driver.store";
+import { useDriverStore } from "../../stores/driver/driver.store";
 
 import {
   useDriverLocation,
   type DriverLocation,
 } from "../../http/driver/hooks/use-driver-location";
 
-import {
-  useDriverRideStore,
-} from "../../stores/driver/driver-ride.store";
+import { useDriverRideStore } from "../../stores/driver/driver-ride.store";
 
 import {
   connectDriverSocket,
   disconnectDriverSocket,
 } from "../../common/helper";
 
-import {
-  useCurrentLocation,
-} from "../../http/ride/hooks/use-current-location";
+import { useCurrentLocation } from "../../http/ride/hooks/use-current-location";
 import { useAuthStore } from "../../stores/auth/auth.store";
+import { useAcceptRide } from "../../http/ride/hooks/use-rides";
 
 export default function DriverHomePage() {
-  const [driverLocation, setDriverLocation] =
-    useState<DriverLocation | null>(null);
-
-  const {
-    location,
-  } = useCurrentLocation();
-
-  const driverId  = useAuthStore((state)=>state.user?.id)
-  const isOnline = useDriverStore(
-    (state) => state.isOnline,
+  const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(
+    null,
   );
+  const acceptRideMutation = useAcceptRide();
 
-  const setOnline = useDriverStore(
-    (state) => state.setOnline,
-  );
+  const { location } = useCurrentLocation();
 
-  const setOffline = useDriverStore(
-    (state) => state.setOffline,
-  );
+  const driverId = useAuthStore((state) => state.user?.id);
+  const isOnline = useDriverStore((state) => state.isOnline);
 
-  const rideRequest = useDriverRideStore(
-    (state) => state.rideRequest,
-  );
+  const setOnline = useDriverStore((state) => state.setOnline);
 
-  const mapContainer =
-    useRef<HTMLDivElement | null>(null);
+  const setOffline = useDriverStore((state) => state.setOffline);
 
-  const mapRef =
-    useRef<MapLibreMap | null>(null);
+  const rideRequest = useDriverRideStore((state) => state.rideRequest);
 
-  const driverMarker =
-    useRef<Marker | null>(null);
+  const mapContainer = useRef<HTMLDivElement | null>(null);
 
-  const MAPTILER_API_KEY =
-    import.meta.env.VITE_MAPTILER_API_KEY;
+  const mapRef = useRef<MapLibreMap | null>(null);
+
+  const driverMarker = useRef<Marker | null>(null);
+
+  const MAPTILER_API_KEY = import.meta.env.VITE_MAPTILER_API_KEY;
 
   useDriverLocation({
     enabled: isOnline,
 
-    onLocationChange: (
-      newLocation,
-    ) => {
-      setDriverLocation(
-        newLocation,
-      );
+    onLocationChange: (newLocation) => {
+      setDriverLocation(newLocation);
     },
   });
 
   useEffect(() => {
-    if (
-      !mapContainer.current ||
-      mapRef.current
-    ) {
+    if (!mapContainer.current || mapRef.current) {
       return;
     }
 
     if (!MAPTILER_API_KEY) {
-      console.error(
-        "VITE_MAPTILER_API_KEY is missing",
-      );
+      console.error("VITE_MAPTILER_API_KEY is missing");
 
       return;
     }
 
-    const initialCenter: [
-      number,
-      number,
-    ] = location
-      ? [
-          location.longitude,
-          location.latitude,
-        ]
-      : [
-          77.5946,
-          12.9716,
-        ];
+    const initialCenter: [number, number] = location
+      ? [location.longitude, location.latitude]
+      : [77.5946, 12.9716];
 
-    const map =
-      new MapLibreMap({
-        container:
-          mapContainer.current,
+    const map = new MapLibreMap({
+      container: mapContainer.current,
 
-        style:
-          `https://api.maptiler.com/maps/dataviz-light/style.json?key=${MAPTILER_API_KEY}`,
+      style: `https://api.maptiler.com/maps/dataviz-light/style.json?key=${MAPTILER_API_KEY}`,
 
-        center:
-          initialCenter,
+      center: initialCenter,
 
-        zoom: 13,
-      });
+      zoom: 13,
+    });
 
-    map.addControl(
-      new NavigationControl(),
-      "top-right",
-    );
+    map.addControl(new NavigationControl(), "top-right");
 
-    map.on(
-      "load",
-      () => {
-        console.log(
-          "Driver map loaded",
-        );
-      },
-    );
+    map.on("load", () => {
+      console.log("Driver map loaded");
+    });
 
-    map.on(
-      "error",
-      (event) => {
-        console.error(
-          "Driver map error:",
-          event.error,
-        );
-      },
-    );
+    map.on("error", (event) => {
+      console.error("Driver map error:", event.error);
+    });
 
     mapRef.current = map;
 
@@ -175,66 +114,48 @@ export default function DriverHomePage() {
   }, [MAPTILER_API_KEY]);
 
   useEffect(() => {
-    if (
-      !mapRef.current ||
-      !location ||
-      driverLocation
-    ) {
+    if (!mapRef.current || !location || driverLocation) {
       return;
     }
 
-    const currentLocation: [
-      number,
-      number,
-    ] = [
+    const currentLocation: [number, number] = [
       location.longitude,
       location.latitude,
     ];
 
     mapRef.current.flyTo({
-      center:
-        currentLocation,
+      center: currentLocation,
 
       zoom: 15,
 
       duration: 800,
     });
-  }, [
-    location,
-    driverLocation,
-  ]);
+  }, [location, driverLocation]);
 
   useEffect(() => {
     if (!mapRef.current) {
       return;
     }
 
-    const currentLocation =
-      driverLocation ?? location;
+    const currentLocation = driverLocation ?? location;
 
     if (!currentLocation) {
       return;
     }
 
-    const lngLat: [
-      number,
-      number,
-    ] = [
+    const lngLat: [number, number] = [
       currentLocation.longitude,
       currentLocation.latitude,
     ];
 
     if (!driverMarker.current) {
-      driverMarker.current =
-        new Marker({
-          color: "#10b981",
-        })
-          .setLngLat(lngLat)
-          .addTo(mapRef.current);
+      driverMarker.current = new Marker({
+        color: "#10b981",
+      })
+        .setLngLat(lngLat)
+        .addTo(mapRef.current);
     } else {
-      driverMarker.current.setLngLat(
-        lngLat,
-      );
+      driverMarker.current.setLngLat(lngLat);
     }
 
     if (driverLocation) {
@@ -244,10 +165,7 @@ export default function DriverHomePage() {
         duration: 800,
       });
     }
-  }, [
-    driverLocation,
-    location,
-  ]);
+  }, [driverLocation, location]);
 
   useEffect(() => {
     if (!isOnline) {
@@ -256,22 +174,11 @@ export default function DriverHomePage() {
       return;
     }
 
-
-    connectDriverSocket(
-      Number(driverId),
-      (message) => {
-        if (
-          message.type ===
-          "RIDE_REQUEST"
-        ) {
-          useDriverRideStore
-            .getState()
-            .setRideRequest(
-              message.data,
-            );
-        }
-      },
-    );
+    connectDriverSocket(Number(driverId), (message) => {
+      if (message.type === "RIDE_REQUEST") {
+        useDriverRideStore.getState().setRideRequest(message.data);
+      }
+    });
 
     return () => {
       disconnectDriverSocket();
@@ -300,40 +207,50 @@ export default function DriverHomePage() {
     setOnline();
   };
 
-  const handleCurrentLocation =
-    () => {
-      if (
-        !mapRef.current
-      ) {
-        return;
-      }
+  const handleCurrentLocation = () => {
+    if (!mapRef.current) {
+      return;
+    }
 
-      const currentLocation =
-        driverLocation ?? location;
+    const currentLocation = driverLocation ?? location;
 
-      if (!currentLocation) {
-        return;
-      }
+    if (!currentLocation) {
+      return;
+    }
 
-      mapRef.current.flyTo({
-        center: [
-          currentLocation.longitude,
-          currentLocation.latitude,
-        ],
+    mapRef.current.flyTo({
+      center: [currentLocation.longitude, currentLocation.latitude],
 
-        zoom: 16,
+      zoom: 16,
 
-        duration: 800,
-      });
-    };
+      duration: 800,
+    });
+  };
 
+  const handleAcceptRide = () => {
+    if (!rideRequest || !driverId) {
+      return;
+    }
+
+    acceptRideMutation.mutate(
+      {
+        rideId: rideRequest.ride_id,
+        driverId: Number(driverId),
+      },
+      {
+        onSuccess: () => {
+          useDriverRideStore.getState().clearRideRequest();
+        },
+        onError: (error) => {
+          console.error("Failed to accept ride:", error);
+        },
+      },
+    );
+  };
   return (
     <>
       <main className="relative h-screen w-full overflow-hidden bg-slate-100">
-        <div
-          ref={mapContainer}
-          className="absolute inset-0 h-full w-full"
-        />
+        <div ref={mapContainer} className="absolute inset-0 h-full w-full" />
 
         <header className="absolute left-4 right-4 top-4 z-20 flex items-center justify-between">
           <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-xl">
@@ -367,18 +284,12 @@ export default function DriverHomePage() {
                   h-2.5
                   w-2.5
                   rounded-full
-                  ${
-                    isOnline
-                      ? "bg-emerald-500"
-                      : "bg-slate-400"
-                  }
+                  ${isOnline ? "bg-emerald-500" : "bg-slate-400"}
                 `}
               />
 
               <span className="text-sm font-semibold text-slate-800">
-                {isOnline
-                  ? "Online"
-                  : "Offline"}
+                {isOnline ? "Online" : "Offline"}
               </span>
             </div>
           </div>
@@ -386,13 +297,8 @@ export default function DriverHomePage() {
 
         <button
           type="button"
-          onClick={
-            handleCurrentLocation
-          }
-          disabled={
-            !driverLocation &&
-            !location
-          }
+          onClick={handleCurrentLocation}
+          disabled={!driverLocation && !location}
           className="absolute right-4 top-24 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Navigation size={18} />
@@ -449,18 +355,12 @@ export default function DriverHomePage() {
                         h-2
                         w-2
                         rounded-full
-                        ${
-                          isOnline
-                            ? "bg-emerald-500"
-                            : "bg-slate-400"
-                        }
+                        ${isOnline ? "bg-emerald-500" : "bg-slate-400"}
                       `}
                     />
 
                     <p className="text-sm font-semibold text-slate-900">
-                      {isOnline
-                        ? "You are online"
-                        : "You are offline"}
+                      {isOnline ? "You are online" : "You are offline"}
                     </p>
                   </div>
 
@@ -473,9 +373,7 @@ export default function DriverHomePage() {
 
                 <button
                   type="button"
-                  onClick={
-                    handleToggle
-                  }
+                  onClick={handleToggle}
                   className={`
                     relative
                     h-8
@@ -483,11 +381,7 @@ export default function DriverHomePage() {
                     rounded-full
                     p-1
                     transition
-                    ${
-                      isOnline
-                        ? "bg-emerald-500"
-                        : "bg-slate-300"
-                    }
+                    ${isOnline ? "bg-emerald-500" : "bg-slate-300"}
                   `}
                 >
                   <span
@@ -499,11 +393,7 @@ export default function DriverHomePage() {
                       bg-white
                       shadow
                       transition
-                      ${
-                        isOnline
-                          ? "translate-x-6"
-                          : "translate-x-0"
-                      }
+                      ${isOnline ? "translate-x-6" : "translate-x-0"}
                     `}
                   />
                 </button>
@@ -511,9 +401,7 @@ export default function DriverHomePage() {
 
               <button
                 type="button"
-                onClick={
-                  handleToggle
-                }
+                onClick={handleToggle}
                 className={`
                   mt-4
                   flex
@@ -536,9 +424,7 @@ export default function DriverHomePage() {
               >
                 <Power size={16} />
 
-                {isOnline
-                  ? "Go Offline"
-                  : "Go Online"}
+                {isOnline ? "Go Offline" : "Go Online"}
               </button>
             </div>
 
@@ -547,28 +433,20 @@ export default function DriverHomePage() {
                 <div className="flex items-center gap-2 text-slate-400">
                   <Wallet size={15} />
 
-                  <span className="text-xs">
-                    Today's Earnings
-                  </span>
+                  <span className="text-xs">Today's Earnings</span>
                 </div>
 
-                <p className="mt-2 text-2xl font-bold text-slate-950">
-                  ₹1,240
-                </p>
+                <p className="mt-2 text-2xl font-bold text-slate-950">₹1,240</p>
               </div>
 
               <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
                 <div className="flex items-center gap-2 text-slate-400">
                   <Route size={15} />
 
-                  <span className="text-xs">
-                    Trips Today
-                  </span>
+                  <span className="text-xs">Trips Today</span>
                 </div>
 
-                <p className="mt-2 text-2xl font-bold text-slate-950">
-                  8
-                </p>
+                <p className="mt-2 text-2xl font-bold text-slate-950">8</p>
               </div>
             </div>
 
@@ -608,54 +486,35 @@ export default function DriverHomePage() {
                   </h2>
 
                   <p className="text-sm text-slate-500">
-                    Ride #
-                    {rideRequest.ride_id}
+                    Ride #{rideRequest.ride_id}
                   </p>
                 </div>
               </div>
 
               <div className="mt-6 space-y-3">
                 <div className="rounded-2xl bg-slate-50 p-4">
-                  <p className="text-xs text-slate-400">
-                    PICKUP
-                  </p>
+                  <p className="text-xs text-slate-400">PICKUP</p>
 
                   <p className="mt-1 text-sm font-semibold">
-                    {
-                      rideRequest.pickup_latitude
-                    }
-                    ,{" "}
-                    {
-                      rideRequest.pickup_longitude
-                    }
+                    {rideRequest.pickup_latitude},{" "}
+                    {rideRequest.pickup_longitude}
                   </p>
                 </div>
 
                 <div className="rounded-2xl bg-slate-50 p-4">
-                  <p className="text-xs text-slate-400">
-                    DESTINATION
-                  </p>
+                  <p className="text-xs text-slate-400">DESTINATION</p>
 
                   <p className="mt-1 text-sm font-semibold">
-                    {
-                      rideRequest.dropoff_latitude
-                    }
-                    ,{" "}
-                    {
-                      rideRequest.dropoff_longitude
-                    }
+                    {rideRequest.dropoff_latitude},{" "}
+                    {rideRequest.dropoff_longitude}
                   </p>
                 </div>
 
                 <div className="rounded-2xl bg-slate-50 p-4">
-                  <p className="text-xs text-slate-400">
-                    VEHICLE
-                  </p>
+                  <p className="text-xs text-slate-400">VEHICLE</p>
 
                   <p className="mt-1 text-sm font-semibold">
-                    {
-                      rideRequest.vehicle_type
-                    }
+                    {rideRequest.vehicle_type}
                   </p>
                 </div>
               </div>
@@ -664,9 +523,7 @@ export default function DriverHomePage() {
                 <button
                   type="button"
                   onClick={() =>
-                    useDriverRideStore
-                      .getState()
-                      .clearRideRequest()
+                    useDriverRideStore.getState().clearRideRequest()
                   }
                   className="rounded-xl border border-slate-200 py-3 font-semibold"
                 >
@@ -674,10 +531,12 @@ export default function DriverHomePage() {
                 </button>
 
                 <button
+                  onClick={handleAcceptRide}
                   type="button"
+                  disabled={acceptRideMutation.isPending}
                   className="rounded-xl bg-black py-3 font-semibold text-white"
                 >
-                  Accept
+                  {acceptRideMutation.isPending ? "Accepting..." : "Accept"}
                 </button>
               </div>
             </div>

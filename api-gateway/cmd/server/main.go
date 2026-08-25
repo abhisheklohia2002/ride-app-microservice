@@ -14,7 +14,6 @@ import (
 	"github.com/ride-api-gateway/internal/ride"
 )
 
-
 func main() {
 	grpcDriverClient.InitDriverClient()
 	grpcRideClient.InitRideClient()
@@ -80,7 +79,10 @@ func main() {
 		"PATCH /api/driver/location",
 		driver.UpdateLocation,
 	)
-
+	mux.HandleFunc(
+		"POST /api/rides/{rideId}/accept",
+		ride.AcceptRide,
+	)
 	handler := middleware.CorsMiddleware(mux)
 
 	log.Println("API Gateway is running at http://localhost:8080")

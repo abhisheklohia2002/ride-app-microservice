@@ -63,6 +63,11 @@ type Repository interface {
 		ctx context.Context,
 		id uint64,
 	) error
+	UpdateRideTx(
+		ctx context.Context,
+		tx *gorm.DB,
+		ride *models.Ride,
+	) (*models.Ride, error)
 }
 
 type repositoryImpl struct {
@@ -215,4 +220,19 @@ func (r repositoryImpl) IncrementOutboxRetry(
 			"retry_count": gorm.Expr("retry_count + ?", 1),
 		}).
 		Error
+}
+
+func (r repositoryImpl) UpdateRideTx(
+	ctx context.Context,
+	tx *gorm.DB,
+	ride *models.Ride,
+) (*models.Ride, error) {
+
+	if err := tx.WithContext(ctx).
+		Save(ride).
+		Error; err != nil {
+		return nil, err
+	}
+
+	return ride, nil
 }

@@ -10,10 +10,14 @@ option go_package = "./shared/pkg/ride";
 
 service RideService {
     rpc CreateRide(CreateRideRequest) returns (RideResponse);
+    rpc AcceptRide(AcceptRideRequest) returns (RideResponse);
 }
 
 
-
+message AcceptRideRequest {
+    int64 ride_id = 1;
+    uint64 driver_id = 2;
+}
 
 message Ride {
     int64 id = 1;

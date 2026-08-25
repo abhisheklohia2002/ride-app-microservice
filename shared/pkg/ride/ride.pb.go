@@ -23,6 +23,58 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type AcceptRideRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RideId        int64                  `protobuf:"varint,1,opt,name=ride_id,json=rideId,proto3" json:"ride_id,omitempty"`
+	DriverId      uint64                 `protobuf:"varint,2,opt,name=driver_id,json=driverId,proto3" json:"driver_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AcceptRideRequest) Reset() {
+	*x = AcceptRideRequest{}
+	mi := &file_proto_ride_ride_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AcceptRideRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AcceptRideRequest) ProtoMessage() {}
+
+func (x *AcceptRideRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ride_ride_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AcceptRideRequest.ProtoReflect.Descriptor instead.
+func (*AcceptRideRequest) Descriptor() ([]byte, []int) {
+	return file_proto_ride_ride_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *AcceptRideRequest) GetRideId() int64 {
+	if x != nil {
+		return x.RideId
+	}
+	return 0
+}
+
+func (x *AcceptRideRequest) GetDriverId() uint64 {
+	if x != nil {
+		return x.DriverId
+	}
+	return 0
+}
+
 type Ride struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	Id                int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -47,7 +99,7 @@ type Ride struct {
 
 func (x *Ride) Reset() {
 	*x = Ride{}
-	mi := &file_proto_ride_ride_proto_msgTypes[0]
+	mi := &file_proto_ride_ride_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -59,7 +111,7 @@ func (x *Ride) String() string {
 func (*Ride) ProtoMessage() {}
 
 func (x *Ride) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ride_ride_proto_msgTypes[0]
+	mi := &file_proto_ride_ride_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -72,7 +124,7 @@ func (x *Ride) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Ride.ProtoReflect.Descriptor instead.
 func (*Ride) Descriptor() ([]byte, []int) {
-	return file_proto_ride_ride_proto_rawDescGZIP(), []int{0}
+	return file_proto_ride_ride_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Ride) GetId() int64 {
@@ -198,7 +250,7 @@ type Location struct {
 
 func (x *Location) Reset() {
 	*x = Location{}
-	mi := &file_proto_ride_ride_proto_msgTypes[1]
+	mi := &file_proto_ride_ride_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -210,7 +262,7 @@ func (x *Location) String() string {
 func (*Location) ProtoMessage() {}
 
 func (x *Location) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ride_ride_proto_msgTypes[1]
+	mi := &file_proto_ride_ride_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -223,7 +275,7 @@ func (x *Location) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Location.ProtoReflect.Descriptor instead.
 func (*Location) Descriptor() ([]byte, []int) {
-	return file_proto_ride_ride_proto_rawDescGZIP(), []int{1}
+	return file_proto_ride_ride_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Location) GetLatitude() float64 {
@@ -259,7 +311,7 @@ type CreateRideRequest struct {
 
 func (x *CreateRideRequest) Reset() {
 	*x = CreateRideRequest{}
-	mi := &file_proto_ride_ride_proto_msgTypes[2]
+	mi := &file_proto_ride_ride_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -271,7 +323,7 @@ func (x *CreateRideRequest) String() string {
 func (*CreateRideRequest) ProtoMessage() {}
 
 func (x *CreateRideRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ride_ride_proto_msgTypes[2]
+	mi := &file_proto_ride_ride_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -284,7 +336,7 @@ func (x *CreateRideRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateRideRequest.ProtoReflect.Descriptor instead.
 func (*CreateRideRequest) Descriptor() ([]byte, []int) {
-	return file_proto_ride_ride_proto_rawDescGZIP(), []int{2}
+	return file_proto_ride_ride_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *CreateRideRequest) GetPickup() *Location {
@@ -324,7 +376,7 @@ type RideResponse struct {
 
 func (x *RideResponse) Reset() {
 	*x = RideResponse{}
-	mi := &file_proto_ride_ride_proto_msgTypes[3]
+	mi := &file_proto_ride_ride_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -336,7 +388,7 @@ func (x *RideResponse) String() string {
 func (*RideResponse) ProtoMessage() {}
 
 func (x *RideResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_ride_ride_proto_msgTypes[3]
+	mi := &file_proto_ride_ride_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -349,7 +401,7 @@ func (x *RideResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RideResponse.ProtoReflect.Descriptor instead.
 func (*RideResponse) Descriptor() ([]byte, []int) {
-	return file_proto_ride_ride_proto_rawDescGZIP(), []int{3}
+	return file_proto_ride_ride_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *RideResponse) GetRide() *Ride {
@@ -363,7 +415,10 @@ var File_proto_ride_ride_proto protoreflect.FileDescriptor
 
 const file_proto_ride_ride_proto_rawDesc = "" +
 	"\n" +
-	"\x15proto/ride/ride.proto\x12\vrideService\"\xe7\x04\n" +
+	"\x15proto/ride/ride.proto\x12\vrideService\"I\n" +
+	"\x11AcceptRideRequest\x12\x17\n" +
+	"\aride_id\x18\x01 \x01(\x03R\x06rideId\x12\x1b\n" +
+	"\tdriver_id\x18\x02 \x01(\x04R\bdriverId\"\xe7\x04\n" +
 	"\x04Ride\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12!\n" +
 	"\fpassenger_id\x18\x02 \x01(\x03R\vpassengerId\x12 \n" +
@@ -397,10 +452,12 @@ const file_proto_ride_ride_proto_rawDesc = "" +
 	"\fvehicle_type\x18\x03 \x01(\tR\vvehicleType\x12 \n" +
 	"\vpassengerID\x18\x04 \x01(\x03R\vpassengerID\"5\n" +
 	"\fRideResponse\x12%\n" +
-	"\x04ride\x18\x01 \x01(\v2\x11.rideService.RideR\x04ride2V\n" +
+	"\x04ride\x18\x01 \x01(\v2\x11.rideService.RideR\x04ride2\x9f\x01\n" +
 	"\vRideService\x12G\n" +
 	"\n" +
-	"CreateRide\x12\x1e.rideService.CreateRideRequest\x1a\x19.rideService.RideResponseB\x13Z\x11./shared/pkg/rideb\x06proto3"
+	"CreateRide\x12\x1e.rideService.CreateRideRequest\x1a\x19.rideService.RideResponse\x12G\n" +
+	"\n" +
+	"AcceptRide\x12\x1e.rideService.AcceptRideRequest\x1a\x19.rideService.RideResponseB\x13Z\x11./shared/pkg/rideb\x06proto3"
 
 var (
 	file_proto_ride_ride_proto_rawDescOnce sync.Once
@@ -414,23 +471,26 @@ func file_proto_ride_ride_proto_rawDescGZIP() []byte {
 	return file_proto_ride_ride_proto_rawDescData
 }
 
-var file_proto_ride_ride_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_proto_ride_ride_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_proto_ride_ride_proto_goTypes = []any{
-	(*Ride)(nil),              // 0: rideService.Ride
-	(*Location)(nil),          // 1: rideService.Location
-	(*CreateRideRequest)(nil), // 2: rideService.CreateRideRequest
-	(*RideResponse)(nil),      // 3: rideService.RideResponse
+	(*AcceptRideRequest)(nil), // 0: rideService.AcceptRideRequest
+	(*Ride)(nil),              // 1: rideService.Ride
+	(*Location)(nil),          // 2: rideService.Location
+	(*CreateRideRequest)(nil), // 3: rideService.CreateRideRequest
+	(*RideResponse)(nil),      // 4: rideService.RideResponse
 }
 var file_proto_ride_ride_proto_depIdxs = []int32{
-	1, // 0: rideService.Ride.pickup:type_name -> rideService.Location
-	1, // 1: rideService.Ride.destination:type_name -> rideService.Location
-	1, // 2: rideService.CreateRideRequest.pickup:type_name -> rideService.Location
-	1, // 3: rideService.CreateRideRequest.destination:type_name -> rideService.Location
-	0, // 4: rideService.RideResponse.ride:type_name -> rideService.Ride
-	2, // 5: rideService.RideService.CreateRide:input_type -> rideService.CreateRideRequest
-	3, // 6: rideService.RideService.CreateRide:output_type -> rideService.RideResponse
-	6, // [6:7] is the sub-list for method output_type
-	5, // [5:6] is the sub-list for method input_type
+	2, // 0: rideService.Ride.pickup:type_name -> rideService.Location
+	2, // 1: rideService.Ride.destination:type_name -> rideService.Location
+	2, // 2: rideService.CreateRideRequest.pickup:type_name -> rideService.Location
+	2, // 3: rideService.CreateRideRequest.destination:type_name -> rideService.Location
+	1, // 4: rideService.RideResponse.ride:type_name -> rideService.Ride
+	3, // 5: rideService.RideService.CreateRide:input_type -> rideService.CreateRideRequest
+	0, // 6: rideService.RideService.AcceptRide:input_type -> rideService.AcceptRideRequest
+	4, // 7: rideService.RideService.CreateRide:output_type -> rideService.RideResponse
+	4, // 8: rideService.RideService.AcceptRide:output_type -> rideService.RideResponse
+	7, // [7:9] is the sub-list for method output_type
+	5, // [5:7] is the sub-list for method input_type
 	5, // [5:5] is the sub-list for extension type_name
 	5, // [5:5] is the sub-list for extension extendee
 	0, // [0:5] is the sub-list for field type_name
@@ -441,14 +501,14 @@ func file_proto_ride_ride_proto_init() {
 	if File_proto_ride_ride_proto != nil {
 		return
 	}
-	file_proto_ride_ride_proto_msgTypes[0].OneofWrappers = []any{}
+	file_proto_ride_ride_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_ride_ride_proto_rawDesc), len(file_proto_ride_ride_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
