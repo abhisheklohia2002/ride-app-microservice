@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 
 import { useCurrentLocation } from "../http/ride/hooks/use-current-location";
-import { useCreateRide } from "../http/ride/hooks/use-rides";
+import { useCancelRide, useCreateRide } from "../http/ride/hooks/use-rides";
 import { useRideStore } from "../stores/ride/ride.store";
 import type { VehicleType } from "../http/ride/dto";
 import { useAuthStore } from "../stores/auth/auth.store";
@@ -42,14 +42,25 @@ type SearchResult = {
 };
 
 export default function MainLayout() {
-  const { location, loading, error } = useCurrentLocation();
+  const SEARCH_DURATION = 120;
 
+  const [isSearchingDriver, setIsSearchingDriver] = useState(false);
+
+  const [searchStartedAt, setSearchStartedAt] = useState<number | null>(null);
+
+  const [remainingSeconds, setRemainingSeconds] = useState(SEARCH_DURATION);
+
+  const [rideSearchError, setRideSearchError] = useState<string | null>(null);
+  const { location, loading, error } = useCurrentLocation();
+  const driverLocation = useRideTrackingStore((state) => state.driverLocation);
   const createRide = useCreateRide();
   const { setAssignedDriver, setDriverLocation } = useRideTrackingStore();
   const passengerId = useAuthStore((state) => state.user?.id);
   const assignedDriver = useRideTrackingStore((state) => state.assignedDriver);
   const setRide = useRideStore((state) => state.setRide);
+  const rideID = useRideStore((state) => state.rideId);
 
+  const cancelRide = useCancelRide();
   const [pickup, setPickup] = useState<SearchResult | null>(null);
 
   const [destination, setDestination] = useState<SearchResult | null>(null);
@@ -67,9 +78,68 @@ export default function MainLayout() {
   const pickupMarker = useRef<Marker | null>(null);
 
   const destinationMarker = useRef<Marker | null>(null);
-
+  const driverMarker = useRef<Marker | null>(null);
   const MAPTILER_API_KEY = import.meta.env.VITE_MAPTILER_API_KEY;
+  const minutes = Math.floor(remainingSeconds / 60);
 
+  const seconds = remainingSeconds % 60;
+
+  const formattedTime = `${String(minutes).padStart(2, "0")}:${String(
+    seconds,
+  ).padStart(2, "0")}`;
+  const drawDriverRoute = useCallback((coordinates: [number, number][]) => {
+    const map = mapRef.current;
+
+    if (!map) {
+      return;
+    }
+
+    const geojson = {
+      type: "Feature" as const,
+      properties: {},
+      geometry: {
+        type: "LineString" as const,
+        coordinates,
+      },
+    };
+
+    const updateRoute = () => {
+      const source = map.getSource("driver-route");
+
+      if (source) {
+        (source as GeoJSONSource).setData(geojson);
+
+        return;
+      }
+
+      map.addSource("driver-route", {
+        type: "geojson",
+        data: geojson,
+      });
+
+      map.addLayer({
+        id: "driver-route",
+        type: "line",
+        source: "driver-route",
+        layout: {
+          "line-join": "round",
+          "line-cap": "round",
+        },
+        paint: {
+          "line-color": "#2563eb",
+          "line-width": 5,
+          "line-opacity": 0.9,
+          "line-dasharray": [2, 1],
+        },
+      });
+    };
+
+    if (map.isStyleLoaded()) {
+      updateRoute();
+    } else {
+      map.once("load", updateRoute);
+    }
+  }, []);
   useEffect(() => {
     if (!location || pickup) {
       return;
@@ -118,6 +188,7 @@ export default function MainLayout() {
     return () => {
       pickupMarker.current?.remove();
       destinationMarker.current?.remove();
+      driverMarker.current?.remove();
 
       if (map.getLayer("ride-route")) {
         map.removeLayer("ride-route");
@@ -132,6 +203,7 @@ export default function MainLayout() {
       mapRef.current = null;
       pickupMarker.current = null;
       destinationMarker.current = null;
+      driverMarker.current = null;
     };
   }, [location, MAPTILER_API_KEY]);
 
@@ -331,7 +403,76 @@ export default function MainLayout() {
     },
     [handleRouteChange],
   );
+  useEffect(() => {
+    if (!isSearchingDriver || !searchStartedAt) {
+      return;
+    }
 
+    const updateTimer = () => {
+      const elapsed = Math.floor((Date.now() - searchStartedAt) / 1000);
+
+      const remaining = Math.max(SEARCH_DURATION - elapsed, 0);
+
+      setRemainingSeconds(remaining);
+
+      if (remaining === 0) {
+        setIsSearchingDriver(false);
+      }
+    };
+
+    updateTimer();
+
+    const timer = window.setInterval(updateTimer, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [isSearchingDriver, searchStartedAt]);
+  useEffect(() => {
+    const map = mapRef.current;
+
+    if (!map || !driverLocation) {
+      return;
+    }
+
+    const position: [number, number] = [
+      driverLocation.longitude,
+      driverLocation.latitude,
+    ];
+
+    if (!driverMarker.current) {
+      const element = document.createElement("div");
+
+      element.innerHTML = `
+      <div
+        style="
+          width:32px;
+          height:32px;
+          border-radius:50%;
+          background:#111827;
+          border:4px solid white;
+          box-shadow:0 4px 14px rgba(0,0,0,0.3);
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          font-size:16px;
+        "
+      >
+        🚕
+      </div>
+    `;
+
+      driverMarker.current = new Marker({
+        element,
+      })
+        .setLngLat(position)
+        .addTo(map);
+
+      return;
+    }
+
+    driverMarker.current.setLngLat(position);
+  }, [driverLocation]);
   useEffect(() => {
     if (!pickup || !destination) {
       if (mapRef.current) {
@@ -399,42 +540,134 @@ export default function MainLayout() {
   }, [pickup, destination, drawRoute]);
 
   const handleRequestRide = () => {
-    if (!pickup || !destination || !passengerId) {
+  if (!pickup || !destination || !passengerId) {
+    return;
+  }
+
+  console.log("REQUEST RIDE CLICKED");
+
+  setRideSearchError(null);
+
+  createRide.mutate(
+    {
+      pickup: {
+        latitude: pickup.latitude,
+        longitude: pickup.longitude,
+        address: pickup.address,
+      },
+
+      destination: {
+        latitude: destination.latitude,
+        longitude: destination.longitude,
+        address: destination.address,
+      },
+
+      vehicle_type: vehicle,
+
+      passengerID: Number(passengerId),
+    },
+    {
+      onSuccess: (response) => {
+        console.log(
+          "CREATE RIDE RESPONSE:",
+          response,
+        );
+
+        const ride =
+          response?.data?.ride;
+
+        if (!ride) {
+          console.error(
+            "Ride missing in response:",
+            response,
+          );
+
+          return;
+        }
+
+        console.log(
+          "RIDE CREATED:",
+          ride,
+        );
+
+        setRide(
+          ride.id,
+          ride.status as any,
+        );
+
+        setRemainingSeconds(
+          SEARCH_DURATION,
+        );
+
+        setSearchStartedAt(
+          Date.now(),
+        );
+
+        setIsSearchingDriver(true);
+      },
+
+      onError: (error) => {
+        console.error(
+          "CREATE RIDE FAILED:",
+          error,
+        );
+
+        setIsSearchingDriver(false);
+        setSearchStartedAt(null);
+        setRemainingSeconds(
+          SEARCH_DURATION,
+        );
+      },
+    },
+  );
+};
+
+  const handleCancelSearch = () => {
+    if (!rideID) {
       return;
     }
 
-    createRide.mutate(
+    cancelRide.mutate(
       {
-        pickup: {
-          latitude: pickup.latitude,
-          longitude: pickup.longitude,
-          address: pickup.address,
-        },
-
-        destination: {
-          latitude: destination.latitude,
-          longitude: destination.longitude,
-          address: destination.address,
-        },
-
-        vehicle_type: vehicle,
-
-        passengerID: Number(passengerId),
+        rideId: rideID,
+        cancelledBy: "PASSENGER",
       },
       {
-        onSuccess: (response) => {
-          const ride = response.ride;
+        onSuccess: () => {
+          setIsSearchingDriver(false);
+          setSearchStartedAt(null);
+          setRemainingSeconds(SEARCH_DURATION);
+          setRideSearchError(null);
 
-          if (!ride) {
-            return;
-          }
-
-          setRide(ride.id, ride.status as any);
+          useRideTrackingStore.getState().clearRideTracking();
+        },
+        onError: (error) => {
+          console.error("Failed to cancel ride:", error);
         },
       },
     );
   };
 
+  const handleCancelRide = () => {
+    if (!rideID) {
+      return;
+    }
+
+    cancelRide.mutate(
+      {
+        rideId: rideID,
+        cancelledBy: "PASSENGER",
+      },
+      {
+        onSuccess: () => {
+          useRideTrackingStore.getState().clearRideTracking();
+        },
+        onError: (error) => {
+          console.error("Failed to cancel ride:", error);
+        },
+      },
+    );
+  };
   const handleUseCurrentLocation = () => {
     if (!location) {
       return;
@@ -451,17 +684,30 @@ export default function MainLayout() {
   useEffect(() => {
     connectPassengerSocket(Number(passengerId), (message) => {
       if (message.type === "RIDE_ASSIGNED") {
+        setIsSearchingDriver(false);
+        setSearchStartedAt(null);
+        setRemainingSeconds(SEARCH_DURATION);
+        setRideSearchError(null);
+
         setAssignedDriver({
           id: message.data.driver_id,
           name: message.data.driver_name,
         });
       }
-
       if (message.type === "DRIVER_LOCATION_UPDATED") {
         setDriverLocation({
           latitude: message.data.latitude,
           longitude: message.data.longitude,
         });
+      }
+      if (message.type === "RIDE_SEARCH_EXPIRED") {
+        setIsSearchingDriver(false);
+        setSearchStartedAt(null);
+        setRemainingSeconds(SEARCH_DURATION);
+
+        useRideTrackingStore.getState().clearRideTracking();
+
+        setRideSearchError("No driver found. Please try again.");
       }
     });
 
@@ -519,13 +765,12 @@ export default function MainLayout() {
 
   return (
     <main className="relative h-screen w-full overflow-hidden bg-slate-100">
-      
       <div ref={mapContainer} className="absolute inset-0" />
 
       <div className="absolute left-5 top-5 z-20 rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-xl">
         <span className="text-lg font-black text-slate-950">RIDOXL</span>
       </div>
-    
+
       <button
         type="button"
         onClick={() => {
@@ -541,7 +786,24 @@ export default function MainLayout() {
       >
         <Navigation size={18} />
       </button>
-        {assignedDriver && (
+      {rideSearchError && (
+        <section className="absolute bottom-5 left-5 right-5 z-40 mx-auto max-w-md rounded-3xl bg-white p-6 text-center shadow-2xl">
+          <h2 className="text-lg font-bold text-slate-950">No driver found</h2>
+
+          <p className="mt-1 text-sm text-slate-500">
+            No nearby driver was available.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => setRideSearchError(null)}
+            className="mt-5 w-full rounded-xl bg-slate-950 py-3 font-semibold text-white"
+          >
+            Try Again
+          </button>
+        </section>
+      )}
+      {assignedDriver && (
         <section className="absolute bottom-0 left-0 right-0 z-20 rounded-t-[30px] bg-white p-5 shadow-2xl md:bottom-5 md:left-5 md:right-auto md:w-[440px] md:rounded-[30px]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -577,168 +839,212 @@ export default function MainLayout() {
           >
             Call Driver
           </button>
+
+          <button
+            type="button"
+            onClick={handleCancelRide}
+            disabled={cancelRide.isPending}
+            className="mt-3 w-full rounded-xl border border-red-200 py-3.5 text-sm font-semibold text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {cancelRide.isPending ? "Cancelling..." : "Cancel Ride"}
+          </button>
         </section>
       )}
-      <motion.div
-        initial={{
-          opacity: 0,
-          y: 30,
-        }}
-        animate={{
-          opacity: 1,
-          y: 0,
-        }}
-        className="absolute bottom-0 left-0 right-0 z-10 rounded-t-[28px] bg-white shadow-2xl md:bottom-5 md:left-5 md:right-auto md:w-[440px] md:rounded-[28px]"
-      >
-        <div className="p-5 md:p-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-slate-950" />
+      {isSearchingDriver && (
+        <section className="absolute bottom-0 left-0 right-0 z-40 rounded-t-[30px] bg-white p-6 shadow-2xl md:bottom-5 md:left-5 md:right-auto md:w-[440px] md:rounded-[30px]">
+          <div className="text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
+              <div className="h-7 w-7 animate-spin rounded-full border-2 border-slate-300 border-t-slate-950" />
+            </div>
 
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Ride
+            <h2 className="mt-4 text-xl font-bold text-slate-950">
+              Finding your driver
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Searching nearby drivers
+            </p>
+
+            <p className="mt-5 text-3xl font-black text-slate-950">
+              {formattedTime}
+            </p>
+
+            <p className="mt-1 text-xs uppercase tracking-wider text-slate-400">
+              Time remaining
+            </p>
+
+            <button
+              type="button"
+              onClick={handleCancelSearch}
+              disabled={cancelRide.isPending || !rideID}
+              className="mt-6 w-full rounded-xl border border-red-200 py-3.5 text-sm font-semibold text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {cancelRide.isPending ? "Cancelling..." : "Cancel Request"}
+            </button>
+          </div>
+        </section>
+      )}
+      {!isSearchingDriver && !assignedDriver && !rideSearchError && (
+        <motion.div
+          initial={{
+            opacity: 0,
+            y: 30,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          className="absolute bottom-0 left-0 right-0 z-10 rounded-t-[28px] bg-white shadow-2xl md:bottom-5 md:left-5 md:right-auto md:w-[440px] md:rounded-[28px]"
+        >
+          <div className="p-5 md:p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-slate-950" />
+
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    Ride
+                  </p>
+                </div>
+
+                <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
+                  Where are you going?
+                </h1>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Choose pickup and destination
                 </p>
               </div>
 
-              <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
-                Where are you going?
-              </h1>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Choose pickup and destination
-              </p>
-            </div>
-
-            {(pickup || destination) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setPickup(
-                    location
-                      ? {
-                          id: "current-location",
-                          address: "Current Location",
-                          latitude: location.latitude,
-                          longitude: location.longitude,
-                        }
-                      : null,
-                  );
-
-                  setDestination(null);
-
-                  setDistance(null);
-
-                  setDuration(null);
-
-                  if (mapRef.current) {
-                    removeRoute(mapRef.current);
-                  }
-                }}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500"
-              >
-                <X size={17} />
-              </button>
-            )}
-          </div>
-
-          <div className="mt-6">
-            <div className="flex gap-3">
-              <div className="flex w-7 shrink-0 justify-center">
-                <div className="mt-3 h-3 w-3 rounded-full bg-emerald-500 ring-4 ring-emerald-100" />
-              </div>
-
-              <div className="relative flex-1">
-                <LocationSearchInput
-                  latitude={location.latitude}
-                  longitude={location.longitude}
-                  value={pickup?.address ?? ""}
-                  placeholder="Search pickup"
-                  label="Pickup"
-                  onSelect={handlePickupSelect}
-                />
-
+              {(pickup || destination) && (
                 <button
                   type="button"
-                  onClick={handleUseCurrentLocation}
-                  className="mt-2 text-xs font-semibold text-slate-600 hover:text-slate-950"
+                  onClick={() => {
+                    setPickup(
+                      location
+                        ? {
+                            id: "current-location",
+                            address: "Current Location",
+                            latitude: location.latitude,
+                            longitude: location.longitude,
+                          }
+                        : null,
+                    );
+
+                    setDestination(null);
+
+                    setDistance(null);
+
+                    setDuration(null);
+
+                    if (mapRef.current) {
+                      removeRoute(mapRef.current);
+                    }
+                  }}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500"
                 >
-                  Use current location
+                  <X size={17} />
                 </button>
-              </div>
+              )}
             </div>
 
-            <div className="ml-[13px] h-5 border-l border-dashed border-slate-300" />
-
-            <div className="flex gap-3">
-              <div className="flex w-7 shrink-0 justify-center">
-                <div className="mt-3 h-3 w-3 rounded-full border-2 border-slate-900 bg-white" />
-              </div>
-
-              <div className="relative flex-1">
-                <LocationSearchInput
-                  latitude={pickup?.latitude ?? location.latitude}
-                  longitude={pickup?.longitude ?? location.longitude}
-                  value={destination?.address ?? ""}
-                  placeholder="Search destination"
-                  label="Destination"
-                  onSelect={handleDestinationSelect}
-                />
-              </div>
-            </div>
-          </div>
-
-          {destination && distanceKm && durationMinutes && (
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-slate-50 p-3">
-                <div className="flex items-center gap-2 text-slate-400">
-                  <Route size={15} />
-
-                  <span className="text-xs">Distance</span>
+            <div className="mt-6">
+              <div className="flex gap-3">
+                <div className="flex w-7 shrink-0 justify-center">
+                  <div className="mt-3 h-3 w-3 rounded-full bg-emerald-500 ring-4 ring-emerald-100" />
                 </div>
 
-                <p className="mt-1 text-lg font-bold">
-                  {distanceKm}
-                  <span className="ml-1 text-xs font-medium text-slate-400">
-                    km
-                  </span>
-                </p>
-              </div>
+                <div className="relative flex-1">
+                  <LocationSearchInput
+                    latitude={location.latitude}
+                    longitude={location.longitude}
+                    value={pickup?.address ?? ""}
+                    placeholder="Search pickup"
+                    label="Pickup"
+                    onSelect={handlePickupSelect}
+                  />
 
-              <div className="rounded-xl bg-slate-50 p-3">
-                <div className="flex items-center gap-2 text-slate-400">
-                  <Clock3 size={15} />
-
-                  <span className="text-xs">ETA</span>
-                </div>
-
-                <p className="mt-1 text-lg font-bold">
-                  {durationMinutes}
-                  <span className="ml-1 text-xs font-medium text-slate-400">
-                    min
-                  </span>
-                </p>
-              </div>
-            </div>
-          )}
-
-          <div className="mt-5">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold">Choose your ride</p>
-
-              <span className="text-xs text-slate-400">Select vehicle</span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              {(["BIKE", "CAR", "PREMIUM"] as VehicleType[]).map((type) => {
-                const selected = vehicle === type;
-
-                return (
                   <button
-                    key={type}
                     type="button"
-                    onClick={() => setVehicle(type)}
-                    className={`
+                    onClick={handleUseCurrentLocation}
+                    className="mt-2 text-xs font-semibold text-slate-600 hover:text-slate-950"
+                  >
+                    Use current location
+                  </button>
+                </div>
+              </div>
+
+              <div className="ml-[13px] h-5 border-l border-dashed border-slate-300" />
+
+              <div className="flex gap-3">
+                <div className="flex w-7 shrink-0 justify-center">
+                  <div className="mt-3 h-3 w-3 rounded-full border-2 border-slate-900 bg-white" />
+                </div>
+
+                <div className="relative flex-1">
+                  <LocationSearchInput
+                    latitude={pickup?.latitude ?? location.latitude}
+                    longitude={pickup?.longitude ?? location.longitude}
+                    value={destination?.address ?? ""}
+                    placeholder="Search destination"
+                    label="Destination"
+                    onSelect={handleDestinationSelect}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {destination && distanceKm && durationMinutes && (
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <div className="flex items-center gap-2 text-slate-400">
+                    <Route size={15} />
+
+                    <span className="text-xs">Distance</span>
+                  </div>
+
+                  <p className="mt-1 text-lg font-bold">
+                    {distanceKm}
+                    <span className="ml-1 text-xs font-medium text-slate-400">
+                      km
+                    </span>
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <div className="flex items-center gap-2 text-slate-400">
+                    <Clock3 size={15} />
+
+                    <span className="text-xs">ETA</span>
+                  </div>
+
+                  <p className="mt-1 text-lg font-bold">
+                    {durationMinutes}
+                    <span className="ml-1 text-xs font-medium text-slate-400">
+                      min
+                    </span>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-5">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-sm font-semibold">Choose your ride</p>
+
+                <span className="text-xs text-slate-400">Select vehicle</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                {(["BIKE", "CAR", "PREMIUM"] as VehicleType[]).map((type) => {
+                  const selected = vehicle === type;
+
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setVehicle(type)}
+                      className={`
                         rounded-xl
                         border
                         p-3
@@ -750,56 +1056,56 @@ export default function MainLayout() {
                             : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                         }
                       `}
-                  >
-                    {type === "BIKE" && <Bike size={20} />}
+                    >
+                      {type === "BIKE" && <Bike size={20} />}
 
-                    {type === "CAR" && <Car size={20} />}
+                      {type === "CAR" && <Car size={20} />}
 
-                    {type === "PREMIUM" && <Crown size={20} />}
+                      {type === "PREMIUM" && <Crown size={20} />}
 
-                    <p className="mt-2 text-xs font-semibold">
-                      {type === "PREMIUM"
-                        ? "Premium"
-                        : type === "BIKE"
-                          ? "Bike"
-                          : "Car"}
-                    </p>
-                  </button>
-                );
-              })}
+                      <p className="mt-2 text-xs font-semibold">
+                        {type === "PREMIUM"
+                          ? "Premium"
+                          : type === "BIKE"
+                            ? "Bike"
+                            : "Car"}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
 
-          <motion.button
-            whileTap={{
-              scale: 0.98,
-            }}
-            type="button"
-            disabled={
-              !pickup || !destination || !passengerId || createRide.isPending
-            }
-            onClick={handleRequestRide}
-            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {createRide.isPending
-              ? "Finding a driver..."
-              : pickup && destination
-                ? "Request Ride"
-                : "Choose pickup and destination"}
+            <motion.button
+              whileTap={{
+                scale: 0.98,
+              }}
+              type="button"
+              disabled={
+                !pickup || !destination || !passengerId || createRide.isPending
+              }
+              onClick={handleRequestRide}
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {createRide.isPending
+                ? "Finding a driver..."
+                : pickup && destination
+                  ? "Request Ride"
+                  : "Choose pickup and destination"}
 
-            {!createRide.isPending && pickup && destination && (
-              <Navigation size={16} />
+              {!createRide.isPending && pickup && destination && (
+                <Navigation size={16} />
+              )}
+            </motion.button>
+
+            {createRide.isError && (
+              <p className="mt-3 text-center text-xs text-red-500">
+                Failed to create ride. Please try again.
+              </p>
             )}
-          </motion.button>
-
-          {createRide.isError && (
-            <p className="mt-3 text-center text-xs text-red-500">
-              Failed to create ride. Please try again.
-            </p>
-          )}
-        </div>
-      </motion.div>
-      
+          </div>
+        </motion.div>
+      )}
     </main>
   );
 }

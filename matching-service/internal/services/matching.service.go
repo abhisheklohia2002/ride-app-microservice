@@ -2,29 +2,36 @@ package services
 
 import (
 	"context"
-	"errors"
+	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ride-app/ride-matching-service/internal/events"
 	"github.com/ride-app/ride-matching-service/internal/messaging/rabbitmq"
 	"github.com/ride-app/ride-matching-service/internal/repository"
-	
+)
+
+const (
+	DriverSearchRadiusKm = 15
+	RideSearchTimeout    = 2 * time.Minute
 )
 
 type MatchingService struct {
 	driverLocationRepo *repository.DriverLocationRepository
 	publisher          *rabbitmq.Publisher
+	pendingRideStore   *PendingRideStore
 }
 
 func NewMatchingService(
 	driverLocationRepo *repository.DriverLocationRepository,
 	publisher *rabbitmq.Publisher,
-
+	pendingRideStore *PendingRideStore,
 ) *MatchingService {
 	return &MatchingService{
 		driverLocationRepo: driverLocationRepo,
 		publisher:          publisher,
+		pendingRideStore:   pendingRideStore,
 	}
 }
 
@@ -34,7 +41,6 @@ func (s *MatchingService) UpdateDriverLocation(
 	latitude float64,
 	longitude float64,
 ) error {
-
 	return s.driverLocationRepo.UpdateLocation(
 		ctx,
 		driverID,
@@ -49,41 +55,95 @@ func (s *MatchingService) FindNearbyDrivers(
 	longitude float64,
 	radius float64,
 ) ([]string, error) {
-
-	drivers, err := s.driverLocationRepo.FindNearbyDrivers(
+	return s.driverLocationRepo.FindNearbyDrivers(
 		ctx,
 		latitude,
 		longitude,
 		radius,
 	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return drivers, nil
 }
 
-func (s *MatchingService) MatchRide(
+func (s *MatchingService) AddPendingRide(
+	event events.RideSearchingEvent,
+) {
+	ride := PendingRide{
+		RideID:           event.RideID,
+		PassengerID:      uint64(event.PassengerID),
+		PickupLatitude:   event.PickupLatitude,
+		PickupLongitude:  event.PickupLongitude,
+		DropoffLatitude:  event.DropoffLatitude,
+		DropoffLongitude: event.DropoffLongitude,
+		VehicleType:      event.VehicleType,
+		CreatedAt:        time.Now(),
+	}
+
+	s.pendingRideStore.Set(ride)
+
+	log.Printf(
+		"PENDING STORE INSTANCE=%p SET ride=%d",
+		s.pendingRideStore,
+		ride.RideID,
+	)
+}
+
+func (s *MatchingService) TryMatchRide(
 	ctx context.Context,
-	event events.RideCreatedEvent,
+	event events.RideSearchingEvent,
 ) error {
+	ride := PendingRide{
+		RideID:           event.RideID,
+		PassengerID:      uint64(event.PassengerID),
+		PickupLatitude:   event.PickupLatitude,
+		PickupLongitude:  event.PickupLongitude,
+		DropoffLatitude:  event.DropoffLatitude,
+		DropoffLongitude: event.DropoffLongitude,
+		VehicleType:      event.VehicleType,
+		CreatedAt:        time.Now(),
+	}
+
+	if existingRide, ok := s.pendingRideStore.Get(
+		event.RideID,
+	); ok {
+		ride = existingRide
+	}
+
+	return s.TryMatchPendingRide(
+		ctx,
+		ride,
+	)
+}
+
+func (s *MatchingService) TryMatchPendingRide(
+	ctx context.Context,
+	ride PendingRide,
+) error {
+	if time.Since(ride.CreatedAt) >= RideSearchTimeout {
+		return s.ExpirePendingRide(
+			ctx,
+			ride,
+		)
+	}
 
 	drivers, err := s.FindNearbyDrivers(
 		ctx,
-		event.PickupLatitude,
-		event.PickupLongitude,
-		5,
+		ride.PickupLatitude,
+		ride.PickupLongitude,
+		DriverSearchRadiusKm,
 	)
 	if err != nil {
 		return err
 	}
 
 	if len(drivers) == 0 {
-		return errors.New("no nearby driver found")
+		log.Printf(
+			"no nearby driver found ride=%d",
+			ride.RideID,
+		)
+
+		return nil
 	}
 
-	driverName := drivers[0]
+	driverName := drivers[time.Now().UnixNano()%int64(len(drivers))]
 
 	driverIDString := strings.TrimPrefix(
 		driverName,
@@ -99,23 +159,103 @@ func (s *MatchingService) MatchRide(
 		return err
 	}
 
+	log.Printf(
+		"driver selected ride=%d driver=%d",
+		ride.RideID,
+		driverID,
+	)
+
 	request := events.RideRequestedEvent{
-		RideID:      event.RideID,
-		PassengerID: event.PassengerID,
-		DriverID:    driverID,
-
-		PickupLatitude:  event.PickupLatitude,
-		PickupLongitude: event.PickupLongitude,
-
-		DropoffLatitude:  event.DropoffLatitude,
-		DropoffLongitude: event.DropoffLongitude,
-
-		VehicleType: event.VehicleType,
+		RideID:           ride.RideID,
+		PassengerID:      int64(ride.PassengerID),
+		DriverID:         driverID,
+		PickupLatitude:   ride.PickupLatitude,
+		PickupLongitude:  ride.PickupLongitude,
+		DropoffLatitude:  ride.DropoffLatitude,
+		DropoffLongitude: ride.DropoffLongitude,
+		VehicleType:      ride.VehicleType,
 	}
 
-	return s.publisher.Publish(
+	if err := s.publisher.Publish(
 		ctx,
+		rabbitmq.RideExchange,
 		"RIDE_REQUESTED",
 		request,
+	); err != nil {
+		return err
+	}
+
+	s.pendingRideStore.Remove(
+		ride.RideID,
 	)
+
+	log.Printf(
+		"ride request published ride=%d driver=%d",
+		ride.RideID,
+		driverID,
+	)
+
+	return nil
+}
+
+func (s *MatchingService) RetryPendingRides(
+	ctx context.Context,
+) error {
+	rides := s.pendingRideStore.GetAll()
+
+	log.Printf(
+		"PENDING STORE INSTANCE=%p COUNT=%d",
+		s.pendingRideStore,
+		len(rides),
+	)
+
+	for _, ride := range rides {
+		log.Printf(
+			"retrying ride=%d",
+			ride.RideID,
+		)
+
+		if err := s.TryMatchPendingRide(
+			ctx,
+			ride,
+		); err != nil {
+			log.Printf(
+				"failed to retry ride=%d: %v",
+				ride.RideID,
+				err,
+			)
+		}
+	}
+
+	return nil
+}
+
+func (s *MatchingService) ExpirePendingRide(
+	ctx context.Context,
+	ride PendingRide,
+) error {
+	event := events.RideSearchExpiredEvent{
+		RideID:      ride.RideID,
+		PassengerID: ride.PassengerID,
+	}
+
+	if err := s.publisher.Publish(
+		ctx,
+		rabbitmq.RideExchange,
+		"RIDE_SEARCH_EXPIRED",
+		event,
+	); err != nil {
+		return err
+	}
+
+	s.pendingRideStore.Remove(
+		ride.RideID,
+	)
+
+	log.Printf(
+		"ride search expired ride=%d",
+		ride.RideID,
+	)
+
+	return nil
 }

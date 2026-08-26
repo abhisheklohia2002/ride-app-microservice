@@ -27,7 +27,8 @@ func NewPublisher(
 
 func (p *Publisher) Publish(
 	ctx context.Context,
-	queue string,
+	exchange string,
+	routingKey string,
 	payload any,
 ) error {
 
@@ -38,8 +39,8 @@ func (p *Publisher) Publish(
 
 	return p.channel.PublishWithContext(
 		ctx,
-		"",
-		queue,
+		exchange,
+		routingKey,
 		false,
 		false,
 		amqp.Publishing{

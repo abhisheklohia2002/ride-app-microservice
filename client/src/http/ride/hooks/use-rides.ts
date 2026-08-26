@@ -1,5 +1,5 @@
 import type { CreateRideRequest } from '../dto';
-import { acceptRide, createRide } from './../api';
+import { acceptRide, cancelRide, createRide } from './../api';
 import { useMutation } from "@tanstack/react-query";
 
 
@@ -21,5 +21,20 @@ export const useAcceptRide = () => {
       rideId: number;
       driverId: number;
     }) => acceptRide(rideId, driverId),
+  });
+};
+
+
+
+
+export const useCancelRide = () => {
+  return useMutation({
+    mutationFn: ({
+      rideId,
+      cancelledBy,
+    }: {
+      rideId: number;
+      cancelledBy: "PASSENGER" | "DRIVER";
+    }) => cancelRide(rideId, cancelledBy),
   });
 };

@@ -110,11 +110,11 @@ export default function AuthForm() {
     registerMutation.mutate(
       registerForm,
       {
-        onSuccess: (response) => {
-          setUser(response.data);
+        onSuccess: (response:any) => {
+          setUser(response);
 
           navigate(
-            response.data.role === "DRIVER"
+            response?.role === "DRIVER"
               ? "/driver"
               : "/passenger",
           );

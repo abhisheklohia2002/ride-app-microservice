@@ -30,15 +30,17 @@ import {
 
 import { useCurrentLocation } from "../../http/ride/hooks/use-current-location";
 import { useAuthStore } from "../../stores/auth/auth.store";
-import { useAcceptRide } from "../../http/ride/hooks/use-rides";
+import { useAcceptRide, useCancelRide } from "../../http/ride/hooks/use-rides";
 import DriverActiveRidePage from "./DriverActiveRidePage";
+import { useRideStore } from "../../stores/ride/ride.store";
 
 export default function DriverHomePage() {
   const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(
     null,
   );
+  
   const acceptRideMutation = useAcceptRide();
-
+  const cancelRide = useCancelRide();
   const { location } = useCurrentLocation();
 
   const driverId = useAuthStore((state) => state.user?.id);
@@ -168,23 +170,37 @@ export default function DriverHomePage() {
     }
   }, [driverLocation, location]);
 
-  useEffect(() => {
-    if (!isOnline) {
-      disconnectDriverSocket();
+ useEffect(() => {
+  if (!isOnline || !driverId) {
+    disconnectDriverSocket();
+    return;
+  }
 
-      return;
-    }
+  console.log(
+    "CONNECTING DRIVER SOCKET driver=",
+    driverId,
+  );
 
-    connectDriverSocket(Number(driverId), (message) => {
+  connectDriverSocket(
+    Number(driverId),
+    (message) => {
+      console.log(
+        "DRIVER WS MESSAGE:",
+        message,
+      );
+
       if (message.type === "RIDE_REQUEST") {
-        useDriverRideStore.getState().setRideRequest(message.data);
+        useDriverRideStore
+          .getState()
+          .setRideRequest(message.data);
       }
-    });
+    },
+  );
 
-    return () => {
-      disconnectDriverSocket();
-    };
-  }, [isOnline]);
+  return () => {
+    disconnectDriverSocket();
+  };
+}, [isOnline, driverId]);
 
   useEffect(() => {
     if (isOnline) {
@@ -256,6 +272,26 @@ export default function DriverHomePage() {
     );
   };
 
+  const handleCancelRide = () => {
+    if (!rideRequest || !driverId) {
+      return;
+    }
+
+    cancelRide.mutate(
+      {
+        rideId: rideRequest.ride_id,
+        cancelledBy: "DRIVER",
+      },
+      {
+        onSuccess: () => {
+          useDriverRideStore.getState().clearRideRequest();
+        },
+        onError: (error) => {
+          console.error("Failed to cancel ride:", error);
+        },
+      },
+    );
+  };
   if (activeRide) {
     return <DriverActiveRidePage ride={activeRide} />;
   }
@@ -534,12 +570,11 @@ export default function DriverHomePage() {
               <div className="mt-6 grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() =>
-                    useDriverRideStore.getState().clearRideRequest()
-                  }
+                  onClick={handleCancelRide}
+                  disabled={cancelRide.isPending}
                   className="rounded-xl border border-slate-200 py-3 font-semibold"
                 >
-                  Reject
+                  {cancelRide.isPending ? "Cancelling..." : "Cancel Ride"}
                 </button>
 
                 <button

@@ -30,6 +30,10 @@ type Service interface {
 		ctx context.Context,
 		req dto.AcceptRideRequest,
 	) (*models.Ride, error)
+	CancelRide(
+		ctx context.Context,
+		req dto.CancelRideRequest,
+	) (*models.Ride, error)
 }
 
 type serviceImpl struct {
@@ -328,6 +332,129 @@ func (s serviceImpl) AcceptRide(
 				AggregateID:   updatedRide.ID,
 				Payload:       string(payload),
 				Status:        string(enums.OutboxStatusPending),
+			}
+
+			if err := s.repo.CreateOutboxEvent(
+				ctx,
+				tx,
+				outboxEvent,
+			); err != nil {
+				return err
+			}
+
+			ride = updatedRide
+
+			return nil
+		},
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return ride, nil
+}
+
+func (s serviceImpl) CancelRide(
+	ctx context.Context,
+	req dto.CancelRideRequest,
+) (*models.Ride, error) {
+
+	if req.RideID == 0 {
+		return nil, errors.New("ride id is required")
+	}
+
+	if req.CancelledBy == "" {
+		return nil, errors.New("cancelled by is required")
+	}
+
+	var ride *models.Ride
+
+	err := s.repo.Transaction(
+		ctx,
+		func(tx *gorm.DB) error {
+
+			var err error
+
+			ride, err = s.repo.GetRideByID(
+				ctx,
+				tx,
+				uint64(req.RideID),
+			)
+			if err != nil {
+				return err
+			}
+
+			if ride == nil {
+				return errors.New("ride not found")
+			}
+
+			switch ride.Status {
+			case string(enums.RideStatusRequested),
+				string(enums.RideStatusSearchingDriver),
+				string(enums.RideStatusDriverAssigned),
+				string(enums.RideStatusDriverArriving),
+				string(enums.RideStatusDriverArrived):
+
+			default:
+				return errors.New(
+					"ride cannot be cancelled in current status",
+				)
+			}
+
+			oldStatus := ride.Status
+
+			ride.Status = string(
+				enums.RideStatusCancelled,
+			)
+
+			updatedRide, err :=
+				s.repo.UpdateRideTx(
+					ctx,
+					tx,
+					ride,
+				)
+			if err != nil {
+				return err
+			}
+
+			history := models.RideStatusHistory{
+				RideID:     updatedRide.ID,
+				FromStatus: oldStatus,
+				ToStatus: string(
+					enums.RideStatusCancelled,
+				),
+				ChangedBy: req.CancelledBy,
+			}
+
+			if err := s.repo.CreateRideStatusHistory(
+				ctx,
+				tx,
+				history,
+			); err != nil {
+				return err
+			}
+
+			event := events.RideCancelledEvent{
+				RideID:      int64(updatedRide.ID),
+				PassengerID: updatedRide.PassengerID,
+				DriverID:    updatedRide.DriverID,
+				CancelledBy: req.CancelledBy,
+			}
+
+			payload, err := json.Marshal(event)
+			if err != nil {
+				return err
+			}
+
+			outboxEvent := models.OutboxEvent{
+				EventType:     "RIDE_CANCELLED",
+				AggregateType: "RIDE",
+				AggregateID:   updatedRide.ID,
+				Payload:       string(payload),
+				Status: string(
+					enums.OutboxStatusPending,
+				),
 			}
 
 			if err := s.repo.CreateOutboxEvent(

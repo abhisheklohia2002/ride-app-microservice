@@ -19,3 +19,8 @@ type AcceptRideRequest struct {
 	RideID   int64
 	DriverID uint64
 }
+
+type CancelRideRequest struct {
+	RideID      int64
+	CancelledBy string
+}

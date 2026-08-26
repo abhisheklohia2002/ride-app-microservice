@@ -411,6 +411,58 @@ func (x *RideResponse) GetRide() *Ride {
 	return nil
 }
 
+type CancelRideRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RideId        int64                  `protobuf:"varint,1,opt,name=ride_id,json=rideId,proto3" json:"ride_id,omitempty"`
+	CancelledBy   string                 `protobuf:"bytes,2,opt,name=cancelled_by,json=cancelledBy,proto3" json:"cancelled_by,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CancelRideRequest) Reset() {
+	*x = CancelRideRequest{}
+	mi := &file_proto_ride_ride_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancelRideRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancelRideRequest) ProtoMessage() {}
+
+func (x *CancelRideRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_ride_ride_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancelRideRequest.ProtoReflect.Descriptor instead.
+func (*CancelRideRequest) Descriptor() ([]byte, []int) {
+	return file_proto_ride_ride_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *CancelRideRequest) GetRideId() int64 {
+	if x != nil {
+		return x.RideId
+	}
+	return 0
+}
+
+func (x *CancelRideRequest) GetCancelledBy() string {
+	if x != nil {
+		return x.CancelledBy
+	}
+	return ""
+}
+
 var File_proto_ride_ride_proto protoreflect.FileDescriptor
 
 const file_proto_ride_ride_proto_rawDesc = "" +
@@ -452,12 +504,17 @@ const file_proto_ride_ride_proto_rawDesc = "" +
 	"\fvehicle_type\x18\x03 \x01(\tR\vvehicleType\x12 \n" +
 	"\vpassengerID\x18\x04 \x01(\x03R\vpassengerID\"5\n" +
 	"\fRideResponse\x12%\n" +
-	"\x04ride\x18\x01 \x01(\v2\x11.rideService.RideR\x04ride2\x9f\x01\n" +
+	"\x04ride\x18\x01 \x01(\v2\x11.rideService.RideR\x04ride\"O\n" +
+	"\x11CancelRideRequest\x12\x17\n" +
+	"\aride_id\x18\x01 \x01(\x03R\x06rideId\x12!\n" +
+	"\fcancelled_by\x18\x02 \x01(\tR\vcancelledBy2\xe8\x01\n" +
 	"\vRideService\x12G\n" +
 	"\n" +
 	"CreateRide\x12\x1e.rideService.CreateRideRequest\x1a\x19.rideService.RideResponse\x12G\n" +
 	"\n" +
-	"AcceptRide\x12\x1e.rideService.AcceptRideRequest\x1a\x19.rideService.RideResponseB\x13Z\x11./shared/pkg/rideb\x06proto3"
+	"AcceptRide\x12\x1e.rideService.AcceptRideRequest\x1a\x19.rideService.RideResponse\x12G\n" +
+	"\n" +
+	"CancelRide\x12\x1e.rideService.CancelRideRequest\x1a\x19.rideService.RideResponseB\x13Z\x11./shared/pkg/rideb\x06proto3"
 
 var (
 	file_proto_ride_ride_proto_rawDescOnce sync.Once
@@ -471,13 +528,14 @@ func file_proto_ride_ride_proto_rawDescGZIP() []byte {
 	return file_proto_ride_ride_proto_rawDescData
 }
 
-var file_proto_ride_ride_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_proto_ride_ride_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_proto_ride_ride_proto_goTypes = []any{
 	(*AcceptRideRequest)(nil), // 0: rideService.AcceptRideRequest
 	(*Ride)(nil),              // 1: rideService.Ride
 	(*Location)(nil),          // 2: rideService.Location
 	(*CreateRideRequest)(nil), // 3: rideService.CreateRideRequest
 	(*RideResponse)(nil),      // 4: rideService.RideResponse
+	(*CancelRideRequest)(nil), // 5: rideService.CancelRideRequest
 }
 var file_proto_ride_ride_proto_depIdxs = []int32{
 	2, // 0: rideService.Ride.pickup:type_name -> rideService.Location
@@ -487,10 +545,12 @@ var file_proto_ride_ride_proto_depIdxs = []int32{
 	1, // 4: rideService.RideResponse.ride:type_name -> rideService.Ride
 	3, // 5: rideService.RideService.CreateRide:input_type -> rideService.CreateRideRequest
 	0, // 6: rideService.RideService.AcceptRide:input_type -> rideService.AcceptRideRequest
-	4, // 7: rideService.RideService.CreateRide:output_type -> rideService.RideResponse
-	4, // 8: rideService.RideService.AcceptRide:output_type -> rideService.RideResponse
-	7, // [7:9] is the sub-list for method output_type
-	5, // [5:7] is the sub-list for method input_type
+	5, // 7: rideService.RideService.CancelRide:input_type -> rideService.CancelRideRequest
+	4, // 8: rideService.RideService.CreateRide:output_type -> rideService.RideResponse
+	4, // 9: rideService.RideService.AcceptRide:output_type -> rideService.RideResponse
+	4, // 10: rideService.RideService.CancelRide:output_type -> rideService.RideResponse
+	8, // [8:11] is the sub-list for method output_type
+	5, // [5:8] is the sub-list for method input_type
 	5, // [5:5] is the sub-list for extension type_name
 	5, // [5:5] is the sub-list for extension extendee
 	0, // [0:5] is the sub-list for field type_name
@@ -508,7 +568,7 @@ func file_proto_ride_ride_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_ride_ride_proto_rawDesc), len(file_proto_ride_ride_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -177,3 +177,85 @@ func AcceptRide(
 		},
 	)
 }
+
+func CancelRide(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	if r.Method != http.MethodPost {
+		http.Error(
+			w,
+			"method not allowed",
+			http.StatusMethodNotAllowed,
+		)
+		return
+	}
+
+	rideID, err := strconv.ParseInt(
+		r.PathValue("rideId"),
+		10,
+		64,
+	)
+	if err != nil {
+		http.Error(
+			w,
+			"invalid ride id",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	var body struct {
+		CancelledBy string `json:"cancelledBy"`
+	}
+
+	if err := json.NewDecoder(
+		r.Body,
+	).Decode(&body); err != nil {
+		http.Error(
+			w,
+			"invalid request body",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	if body.CancelledBy == "" {
+		http.Error(
+			w,
+			"cancelledBy is required",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	res, err :=
+		grpcRideClient.RideClient.CancelRide(
+			r.Context(),
+			&pb.CancelRideRequest{
+				RideId:      rideID,
+				CancelledBy: body.CancelledBy,
+			},
+		)
+
+	if err != nil {
+		http.Error(
+			w,
+			"failed to cancel ride",
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	w.Header().Set(
+		"Content-Type",
+		"application/json",
+	)
+
+	_ = json.NewEncoder(w).Encode(
+		map[string]any{
+			"message": "ride cancelled",
+			"data":    res,
+		},
+	)
+}

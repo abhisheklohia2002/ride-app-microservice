@@ -59,6 +59,8 @@ func main() {
 	}
 
 	defer redisClient.Close()
+	pendingRideStore :=
+		services.NewPendingRideStore()
 
 	driverLocationRepo := repository.NewDriverLocationRepository(
 		redisClient.RDB,
@@ -80,11 +82,16 @@ func main() {
 	matchingService := services.NewMatchingService(
 		driverLocationRepo,
 		rabbitPublisher,
+		pendingRideStore,
 	)
 
+	passengerHub := matchingWebSocket.NewHub()
+	activeRideStore := services.NewActiveRideStore()
 	driverConsumer := consumers.NewDriverConsumer(
 		rabbitConsumer,
 		matchingService,
+		passengerHub,
+		activeRideStore,
 	)
 
 	if err := driverConsumer.Start(ctx); err != nil {
@@ -93,12 +100,13 @@ func main() {
 			err,
 		)
 	}
-	passengerHub := matchingWebSocket.NewHub()
 
 	rideConsumer := consumers.NewRideConsumer(
 		rabbitConsumer,
 		matchingService,
 		passengerHub,
+		activeRideStore,
+		pendingRideStore,
 	)
 
 	if err := rideConsumer.Start(ctx); err != nil {
@@ -142,6 +150,20 @@ func main() {
 		MaxAge: 12 * time.Hour,
 	}))
 
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+
+			case <-ticker.C:
+				matchingService.RetryPendingRides(ctx)
+			}
+		}
+	}()
 	r.GET("/health-matching-service", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status": "ok",
@@ -152,6 +174,7 @@ func main() {
 		"/ws/passenger",
 		handlers.PassengerSocket(passengerHub),
 	)
+
 	log.Println("Matching Service HTTP server running on :8085")
 	log.Println("Driver location consumer started")
 	log.Println("Ride searching consumer started")

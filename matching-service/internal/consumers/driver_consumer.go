@@ -9,7 +9,7 @@ import (
 
 	"github.com/ride-app/ride-matching-service/internal/messaging/rabbitmq"
 	"github.com/ride-app/ride-matching-service/internal/services"
-	// "github.com/ride-app/shared/messaging/rabbitmq"
+	matchingWebSocket "github.com/ride-app/ride-matching-service/internal/websocket"
 )
 
 type DriverLocationUpdatedEvent struct {
@@ -21,33 +21,39 @@ type DriverLocationUpdatedEvent struct {
 type DriverConsumer struct {
 	rabbitConsumer  *rabbitmq.Consumer
 	matchingService *services.MatchingService
+	passengerHub    *matchingWebSocket.Hub
+	activeRideStore *services.ActiveRideStore
 }
 
 func NewDriverConsumer(
 	rabbitConsumer *rabbitmq.Consumer,
 	matchingService *services.MatchingService,
+	passengerHub *matchingWebSocket.Hub,
+	activeRideStore *services.ActiveRideStore,
 ) *DriverConsumer {
 	return &DriverConsumer{
 		rabbitConsumer:  rabbitConsumer,
 		matchingService: matchingService,
+		passengerHub:    passengerHub,
+		activeRideStore: activeRideStore,
 	}
 }
 
 func (c *DriverConsumer) Start(
 	ctx context.Context,
 ) error {
-
 	messages, err := c.rabbitConsumer.Consume(
 		"matching.driver.location",
 		rabbitmq.DriverExchange,
 		"DRIVER_LOCATION_UPDATED",
 	)
-
 	if err != nil {
 		return err
 	}
 
-	log.Println("driver location consumer started")
+	log.Println(
+		"driver location consumer started",
+	)
 
 	go func() {
 		for {
@@ -64,7 +70,6 @@ func (c *DriverConsumer) Start(
 					ctx,
 					message,
 				); err != nil {
-
 					log.Printf(
 						"failed to process driver location: %v",
 						err,
@@ -95,7 +100,6 @@ func (c *DriverConsumer) handleMessage(
 	ctx context.Context,
 	message amqp091.Delivery,
 ) error {
-
 	var event DriverLocationUpdatedEvent
 
 	if err := json.Unmarshal(
@@ -123,6 +127,46 @@ func (c *DriverConsumer) handleMessage(
 		event.DriverID,
 		event.Latitude,
 		event.Longitude,
+	)
+
+	err := c.matchingService.RetryPendingRides(ctx)
+	if err != nil {
+		log.Printf(
+			"failed to retry pending rides: %v",
+			err,
+		)
+	}
+
+	activeRide, ok :=
+		c.activeRideStore.GetByDriver(
+			event.DriverID,
+		)
+
+	if !ok {
+		return nil
+	}
+
+	payload := map[string]any{
+		"type": "DRIVER_LOCATION_UPDATED",
+		"data": map[string]any{
+			"ride_id":   activeRide.RideID,
+			"driver_id": event.DriverID,
+			"latitude":  event.Latitude,
+			"longitude": event.Longitude,
+		},
+	}
+
+	if err := c.passengerHub.SendToPassenger(
+		activeRide.PassengerID,
+		payload,
+	); err != nil {
+		return err
+	}
+
+	log.Printf(
+		"driver location sent to passenger=%d driver=%d",
+		activeRide.PassengerID,
+		event.DriverID,
 	)
 
 	return nil

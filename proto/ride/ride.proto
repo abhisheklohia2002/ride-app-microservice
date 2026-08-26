@@ -11,6 +11,8 @@ option go_package = "./shared/pkg/ride";
 service RideService {
     rpc CreateRide(CreateRideRequest) returns (RideResponse);
     rpc AcceptRide(AcceptRideRequest) returns (RideResponse);
+    rpc CancelRide(CancelRideRequest) returns (RideResponse);
+
 }
 
 
@@ -68,4 +70,10 @@ message CreateRideRequest {
 
 message RideResponse {
     Ride ride = 1;
+}
+
+
+message CancelRideRequest {
+  int64 ride_id = 1;
+  string cancelled_by = 2;
 }

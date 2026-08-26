@@ -40,13 +40,25 @@ func (c *RideRequestConsumer) Start(
 	ctx context.Context,
 ) error {
 
+	log.Println("starting ride request consumer")
+
 	messages, err := c.rabbitConsumer.Consume(
 		"driver.ride.requests",
 		"RIDE_REQUESTED",
 	)
+
 	if err != nil {
+		log.Printf(
+			"failed to create ride request consumer: %v",
+			err,
+		)
+
 		return err
 	}
+
+	log.Println(
+		"ride request consumer listening queue=driver.ride.requests routingKey=RIDE_REQUESTED",
+	)
 
 	go func() {
 		for {
