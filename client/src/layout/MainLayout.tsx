@@ -1,9 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   Map as MapLibreMap,
@@ -33,6 +28,11 @@ import { useCreateRide } from "../http/ride/hooks/use-rides";
 import { useRideStore } from "../stores/ride/ride.store";
 import type { VehicleType } from "../http/ride/dto";
 import { useAuthStore } from "../stores/auth/auth.store";
+import {
+  connectPassengerSocket,
+  disconnectPassengerSocket,
+} from "../common/passenger-socket";
+import { useRideTrackingStore } from "../stores/ride/rideTracking.store";
 
 type SearchResult = {
   id: string;
@@ -42,51 +42,33 @@ type SearchResult = {
 };
 
 export default function MainLayout() {
-  const {
-    location,
-    loading,
-    error,
-  } = useCurrentLocation();
+  const { location, loading, error } = useCurrentLocation();
 
   const createRide = useCreateRide();
+  const { setAssignedDriver, setDriverLocation } = useRideTrackingStore();
+  const passengerId = useAuthStore((state) => state.user?.id);
+  const assignedDriver = useRideTrackingStore((state) => state.assignedDriver);
+  const setRide = useRideStore((state) => state.setRide);
 
-  const passengerId = useAuthStore(
-    (state) => state.user?.id,
-  );
+  const [pickup, setPickup] = useState<SearchResult | null>(null);
 
-  const setRide = useRideStore(
-    (state) => state.setRide,
-  );
+  const [destination, setDestination] = useState<SearchResult | null>(null);
 
-  const [pickup, setPickup] =
-    useState<SearchResult | null>(null);
+  const [vehicle, setVehicle] = useState<VehicleType>("CAR");
 
-  const [destination, setDestination] =
-    useState<SearchResult | null>(null);
+  const [distance, setDistance] = useState<number | null>(null);
 
-  const [vehicle, setVehicle] =
-    useState<VehicleType>("CAR");
+  const [duration, setDuration] = useState<number | null>(null);
 
-  const [distance, setDistance] =
-    useState<number | null>(null);
+  const mapContainer = useRef<HTMLDivElement | null>(null);
 
-  const [duration, setDuration] =
-    useState<number | null>(null);
+  const mapRef = useRef<MapLibreMap | null>(null);
 
-  const mapContainer =
-    useRef<HTMLDivElement | null>(null);
+  const pickupMarker = useRef<Marker | null>(null);
 
-  const mapRef =
-    useRef<MapLibreMap | null>(null);
+  const destinationMarker = useRef<Marker | null>(null);
 
-  const pickupMarker =
-    useRef<Marker | null>(null);
-
-  const destinationMarker =
-    useRef<Marker | null>(null);
-
-  const MAPTILER_API_KEY =
-    import.meta.env.VITE_MAPTILER_API_KEY;
+  const MAPTILER_API_KEY = import.meta.env.VITE_MAPTILER_API_KEY;
 
   useEffect(() => {
     if (!location || pickup) {
@@ -111,36 +93,24 @@ export default function MainLayout() {
       return;
     }
 
-    const map =
-      new MapLibreMap({
-        container:
-          mapContainer.current,
+    const map = new MapLibreMap({
+      container: mapContainer.current,
 
-        style:
-          `https://api.maptiler.com/maps/dataviz-light/style.json?key=${MAPTILER_API_KEY}`,
+      style: `https://api.maptiler.com/maps/dataviz-light/style.json?key=${MAPTILER_API_KEY}`,
 
-        center: [
-          location.longitude,
-          location.latitude,
-        ],
+      center: [location.longitude, location.latitude],
 
-        zoom: 13,
-      });
+      zoom: 13,
+    });
 
-    map.addControl(
-      new NavigationControl(),
-      "top-right",
-    );
+    map.addControl(new NavigationControl(), "top-right");
 
     map.on("load", () => {
       console.log("MAP LOADED");
     });
 
     map.on("error", (event) => {
-      console.error(
-        "MAP ERROR:",
-        event.error,
-      );
+      console.error("MAP ERROR:", event.error);
     });
 
     mapRef.current = map;
@@ -163,10 +133,7 @@ export default function MainLayout() {
       pickupMarker.current = null;
       destinationMarker.current = null;
     };
-  }, [
-    location,
-    MAPTILER_API_KEY,
-  ]);
+  }, [location, MAPTILER_API_KEY]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -177,8 +144,7 @@ export default function MainLayout() {
 
     pickupMarker.current?.remove();
 
-    const element =
-      document.createElement("div");
+    const element = document.createElement("div");
 
     element.innerHTML = `
       <div
@@ -193,15 +159,11 @@ export default function MainLayout() {
       ></div>
     `;
 
-    pickupMarker.current =
-      new Marker({
-        element,
-      })
-        .setLngLat([
-          pickup.longitude,
-          pickup.latitude,
-        ])
-        .addTo(map);
+    pickupMarker.current = new Marker({
+      element,
+    })
+      .setLngLat([pickup.longitude, pickup.latitude])
+      .addTo(map);
   }, [pickup]);
 
   useEffect(() => {
@@ -224,8 +186,7 @@ export default function MainLayout() {
       return;
     }
 
-    const element =
-      document.createElement("div");
+    const element = document.createElement("div");
 
     element.innerHTML = `
       <div
@@ -241,15 +202,11 @@ export default function MainLayout() {
       ></div>
     `;
 
-    destinationMarker.current =
-      new Marker({
-        element,
-      })
-        .setLngLat([
-          destination.longitude,
-          destination.latitude,
-        ])
-        .addTo(map);
+    destinationMarker.current = new Marker({
+      element,
+    })
+      .setLngLat([destination.longitude, destination.latitude])
+      .addTo(map);
   }, [destination]);
 
   useEffect(() => {
@@ -258,175 +215,127 @@ export default function MainLayout() {
     }
 
     mapRef.current.flyTo({
-      center: [
-        pickup.longitude,
-        pickup.latitude,
-      ],
+      center: [pickup.longitude, pickup.latitude],
       zoom: 14,
       duration: 700,
     });
   }, [pickup]);
 
-  const handlePickupSelect =
-    useCallback(
-      (selectedPickup: SearchResult) => {
-        setPickup(selectedPickup);
-        setDestination(null);
-        setDistance(null);
-        setDuration(null);
+  const handlePickupSelect = useCallback((selectedPickup: SearchResult) => {
+    setPickup(selectedPickup);
+    setDestination(null);
+    setDistance(null);
+    setDuration(null);
 
-        if (mapRef.current) {
-          removeRoute(mapRef.current);
-        }
-      },
-      [],
-    );
+    if (mapRef.current) {
+      removeRoute(mapRef.current);
+    }
+  }, []);
 
-  const handleDestinationSelect =
-    useCallback(
-      (selectedDestination: SearchResult) => {
-        setDestination(
-          selectedDestination,
-        );
+  const handleDestinationSelect = useCallback(
+    (selectedDestination: SearchResult) => {
+      setDestination(selectedDestination);
 
-        setDistance(null);
-        setDuration(null);
-      },
-      [],
-    );
+      setDistance(null);
+      setDuration(null);
+    },
+    [],
+  );
 
-  const handleRouteChange =
-    useCallback(
-      (
-        distanceMeters: number,
-        durationMillis: number,
-      ) => {
-        setDistance(
-          distanceMeters,
-        );
+  const handleRouteChange = useCallback(
+    (distanceMeters: number, durationMillis: number) => {
+      setDistance(distanceMeters);
 
-        setDuration(
-          durationMillis,
-        );
-      },
-      [],
-    );
+      setDuration(durationMillis);
+    },
+    [],
+  );
 
-  const drawRoute =
-    useCallback(
-      (
-        coordinates: [number, number][],
-        distanceMeters: number,
-        durationMillis: number,
-      ) => {
-        const map = mapRef.current;
+  const drawRoute = useCallback(
+    (
+      coordinates: [number, number][],
+      distanceMeters: number,
+      durationMillis: number,
+    ) => {
+      const map = mapRef.current;
 
-        if (!map) {
+      if (!map) {
+        return;
+      }
+
+      const geojson = {
+        type: "Feature" as const,
+        properties: {},
+        geometry: {
+          type: "LineString" as const,
+          coordinates,
+        },
+      };
+
+      const updateRoute = () => {
+        const existingSource = map.getSource("ride-route");
+
+        if (existingSource) {
+          const source = existingSource as GeoJSONSource;
+
+          source.setData(geojson);
+
           return;
         }
 
-        const geojson = {
-          type: "Feature" as const,
-          properties: {},
-          geometry: {
-            type: "LineString" as const,
-            coordinates,
+        map.addSource("ride-route", {
+          type: "geojson",
+          data: geojson,
+        });
+
+        map.addLayer({
+          id: "ride-route",
+          type: "line",
+          source: "ride-route",
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
           },
-        };
-
-        const updateRoute = () => {
-          const existingSource =
-            map.getSource(
-              "ride-route",
-            );
-
-          if (existingSource) {
-            const source =
-              existingSource as GeoJSONSource;
-
-            source.setData(geojson);
-
-            return;
-          }
-
-          map.addSource(
-            "ride-route",
-            {
-              type: "geojson",
-              data: geojson,
-            },
-          );
-
-          map.addLayer({
-            id: "ride-route",
-            type: "line",
-            source: "ride-route",
-            layout: {
-              "line-join":
-                "round",
-              "line-cap":
-                "round",
-            },
-            paint: {
-              "line-color":
-                "#111827",
-              "line-width": 5,
-              "line-opacity": 0.9,
-            },
-          });
-        };
-
-        if (map.isStyleLoaded()) {
-          updateRoute();
-        } else {
-          map.once(
-            "load",
-            updateRoute,
-          );
-        }
-
-        const bounds =
-          new LngLatBounds();
-
-        coordinates.forEach(
-          (coordinate) => {
-            bounds.extend(
-              coordinate,
-            );
+          paint: {
+            "line-color": "#111827",
+            "line-width": 5,
+            "line-opacity": 0.9,
           },
-        );
+        });
+      };
 
-        map.fitBounds(
-          bounds,
-          {
-            padding: {
-              top: 100,
-              bottom: 400,
-              left: 50,
-              right: 50,
-            },
-            maxZoom: 15,
-            duration: 900,
-          },
-        );
+      if (map.isStyleLoaded()) {
+        updateRoute();
+      } else {
+        map.once("load", updateRoute);
+      }
 
-        handleRouteChange(
-          distanceMeters,
-          durationMillis,
-        );
-      },
-      [handleRouteChange],
-    );
+      const bounds = new LngLatBounds();
+
+      coordinates.forEach((coordinate) => {
+        bounds.extend(coordinate);
+      });
+
+      map.fitBounds(bounds, {
+        padding: {
+          top: 100,
+          bottom: 400,
+          left: 50,
+          right: 50,
+        },
+        maxZoom: 15,
+        duration: 900,
+      });
+
+      handleRouteChange(distanceMeters, durationMillis);
+    },
+    [handleRouteChange],
+  );
 
   useEffect(() => {
-    if (
-      !pickup ||
-      !destination
-    ) {
+    if (!pickup || !destination) {
       if (mapRef.current) {
-        removeRoute(
-          mapRef.current,
-        );
+        removeRoute(mapRef.current);
       }
 
       return;
@@ -442,62 +351,42 @@ export default function MainLayout() {
           `${destination.longitude},${destination.latitude}` +
           `?overview=full&geometries=geojson`;
 
-        const response =
-          await fetch(url);
+        const response = await fetch(url);
 
         if (!response.ok) {
-          throw new Error(
-            `Routing failed: ${response.status}`,
-          );
+          throw new Error(`Routing failed: ${response.status}`);
         }
 
-        const data =
-          await response.json();
+        const data = await response.json();
 
         if (cancelled) {
           return;
         }
 
-        const route =
-          data?.routes?.[0];
+        const route = data?.routes?.[0];
 
         if (!route) {
-          console.error(
-            "No route found",
-          );
+          console.error("No route found");
 
           return;
         }
 
-        const coordinates =
-          route.geometry
-            ?.coordinates;
+        const coordinates = route.geometry?.coordinates;
 
-        if (
-          !coordinates ||
-          coordinates.length === 0
-        ) {
-          console.error(
-            "Route geometry missing",
-          );
+        if (!coordinates || coordinates.length === 0) {
+          console.error("Route geometry missing");
 
           return;
         }
 
         drawRoute(
-          coordinates as [
-            number,
-            number,
-          ][],
+          coordinates as [number, number][],
           route.distance,
           route.duration,
         );
       } catch (error) {
         if (!cancelled) {
-          console.error(
-            "Route error:",
-            error,
-          );
+          console.error("Route error:", error);
         }
       }
     };
@@ -507,84 +396,79 @@ export default function MainLayout() {
     return () => {
       cancelled = true;
     };
-  }, [
-    pickup,
-    destination,
-    drawRoute,
-  ]);
+  }, [pickup, destination, drawRoute]);
 
-  const handleRequestRide =
-    () => {
-      if (
-        !pickup ||
-        !destination ||
-        !passengerId
-      ) {
-        return;
+  const handleRequestRide = () => {
+    if (!pickup || !destination || !passengerId) {
+      return;
+    }
+
+    createRide.mutate(
+      {
+        pickup: {
+          latitude: pickup.latitude,
+          longitude: pickup.longitude,
+          address: pickup.address,
+        },
+
+        destination: {
+          latitude: destination.latitude,
+          longitude: destination.longitude,
+          address: destination.address,
+        },
+
+        vehicle_type: vehicle,
+
+        passengerID: Number(passengerId),
+      },
+      {
+        onSuccess: (response) => {
+          const ride = response.ride;
+
+          if (!ride) {
+            return;
+          }
+
+          setRide(ride.id, ride.status as any);
+        },
+      },
+    );
+  };
+
+  const handleUseCurrentLocation = () => {
+    if (!location) {
+      return;
+    }
+
+    setPickup({
+      id: "current-location",
+      address: "Current Location",
+      latitude: location.latitude,
+      longitude: location.longitude,
+    });
+  };
+
+  useEffect(() => {
+    connectPassengerSocket(Number(passengerId), (message) => {
+      if (message.type === "RIDE_ASSIGNED") {
+        setAssignedDriver({
+          id: message.data.driver_id,
+          name: message.data.driver_name,
+        });
       }
 
-      createRide.mutate(
-        {
-          pickup: {
-            latitude:
-              pickup.latitude,
-            longitude:
-              pickup.longitude,
-            address:
-              pickup.address,
-          },
-
-          destination: {
-            latitude:
-              destination.latitude,
-            longitude:
-              destination.longitude,
-            address:
-              destination.address,
-          },
-
-          vehicle_type:
-            vehicle,
-
-          passengerID:
-            Number(passengerId),
-        },
-        {
-          onSuccess: (
-            response,
-          ) => {
-            const ride =
-              response.ride;
-
-            if (!ride) {
-              return;
-            }
-
-            setRide(
-              ride.id,
-              ride.status as any,
-            );
-          },
-        },
-      );
-    };
-
-  const handleUseCurrentLocation =
-    () => {
-      if (!location) {
-        return;
+      if (message.type === "DRIVER_LOCATION_UPDATED") {
+        setDriverLocation({
+          latitude: message.data.latitude,
+          longitude: message.data.longitude,
+        });
       }
+    });
 
-      setPickup({
-        id: "current-location",
-        address:
-          "Current Location",
-        latitude:
-          location.latitude,
-        longitude:
-          location.longitude,
-      });
+    return () => {
+      disconnectPassengerSocket();
     };
+  }, [passengerId, setAssignedDriver, setDriverLocation]);
 
   if (loading) {
     return (
@@ -607,26 +491,18 @@ export default function MainLayout() {
       <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
         <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-7 text-center shadow-xl">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">
-            <MapPin
-              size={24}
-              className="text-red-500"
-            />
+            <MapPin size={24} className="text-red-500" />
           </div>
 
-          <h2 className="mt-5 text-xl font-bold">
-            Location unavailable
-          </h2>
+          <h2 className="mt-5 text-xl font-bold">Location unavailable</h2>
 
           <p className="mt-2 text-sm text-slate-500">
-            {error ??
-              "Unable to get your location"}
+            {error ?? "Unable to get your location"}
           </p>
 
           <button
             type="button"
-            onClick={() =>
-              window.location.reload()
-            }
+            onClick={() => window.location.reload()}
             className="mt-6 w-full rounded-xl bg-slate-900 py-3 text-sm font-semibold text-white"
           >
             Try Again
@@ -636,55 +512,73 @@ export default function MainLayout() {
     );
   }
 
-  const distanceKm =
-    distance !== null
-      ? (distance / 1000).toFixed(1)
-      : null;
+  const distanceKm = distance !== null ? (distance / 1000).toFixed(1) : null;
 
   const durationMinutes =
-    duration !== null
-      ? Math.ceil(
-          duration / 60000,
-        )
-      : null;
+    duration !== null ? Math.ceil(duration / 60000) : null;
 
   return (
     <main className="relative h-screen w-full overflow-hidden bg-slate-100">
-      <div
-        ref={mapContainer}
-        className="absolute inset-0"
-      />
+      
+      <div ref={mapContainer} className="absolute inset-0" />
 
       <div className="absolute left-5 top-5 z-20 rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-xl">
-        <span className="text-lg font-black text-slate-950">
-          RIDOXL
-        </span>
+        <span className="text-lg font-black text-slate-950">RIDOXL</span>
       </div>
-
+    
       <button
         type="button"
         onClick={() => {
-          if (
-            mapRef.current &&
-            pickup
-          ) {
-            mapRef.current.flyTo(
-              {
-                center: [
-                  pickup.longitude,
-                  pickup.latitude,
-                ],
-                zoom: 15,
-                duration: 800,
-              },
-            );
+          if (mapRef.current && pickup) {
+            mapRef.current.flyTo({
+              center: [pickup.longitude, pickup.latitude],
+              zoom: 15,
+              duration: 800,
+            });
           }
         }}
         className="absolute right-5 top-5 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xl"
       >
         <Navigation size={18} />
       </button>
+        {assignedDriver && (
+        <section className="absolute bottom-0 left-0 right-0 z-20 rounded-t-[30px] bg-white p-5 shadow-2xl md:bottom-5 md:left-5 md:right-auto md:w-[440px] md:rounded-[30px]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-xl">
+                🚕
+              </div>
 
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  Driver Assigned
+                </p>
+
+                <h2 className="mt-1 text-lg font-bold text-slate-950">
+                  {assignedDriver?.name || "N/A"}
+                </h2>
+
+                <p className="text-sm text-slate-500">
+                  Your driver is on the way
+                </p>
+              </div>
+            </div>
+
+            <div className="text-right">
+              <p className="text-sm font-bold text-slate-900">⭐ 4.8</p>
+
+              <p className="text-xs text-slate-400">CAR</p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="mt-5 w-full rounded-xl bg-slate-950 py-3.5 text-sm font-semibold text-white"
+          >
+            Call Driver
+          </button>
+        </section>
+      )}
       <motion.div
         initial={{
           opacity: 0,
@@ -716,8 +610,7 @@ export default function MainLayout() {
               </p>
             </div>
 
-            {(pickup ||
-              destination) && (
+            {(pickup || destination) && (
               <button
                 type="button"
                 onClick={() => {
@@ -725,34 +618,21 @@ export default function MainLayout() {
                     location
                       ? {
                           id: "current-location",
-                          address:
-                            "Current Location",
-                          latitude:
-                            location.latitude,
-                          longitude:
-                            location.longitude,
+                          address: "Current Location",
+                          latitude: location.latitude,
+                          longitude: location.longitude,
                         }
                       : null,
                   );
 
-                  setDestination(
-                    null,
-                  );
+                  setDestination(null);
 
-                  setDistance(
-                    null,
-                  );
+                  setDistance(null);
 
-                  setDuration(
-                    null,
-                  );
+                  setDuration(null);
 
-                  if (
-                    mapRef.current
-                  ) {
-                    removeRoute(
-                      mapRef.current,
-                    );
+                  if (mapRef.current) {
+                    removeRoute(mapRef.current);
                   }
                 }}
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500"
@@ -770,28 +650,17 @@ export default function MainLayout() {
 
               <div className="relative flex-1">
                 <LocationSearchInput
-                  latitude={
-                    location.latitude
-                  }
-                  longitude={
-                    location.longitude
-                  }
-                  value={
-                    pickup?.address ??
-                    ""
-                  }
+                  latitude={location.latitude}
+                  longitude={location.longitude}
+                  value={pickup?.address ?? ""}
                   placeholder="Search pickup"
                   label="Pickup"
-                  onSelect={
-                    handlePickupSelect
-                  }
+                  onSelect={handlePickupSelect}
                 />
 
                 <button
                   type="button"
-                  onClick={
-                    handleUseCurrentLocation
-                  }
+                  onClick={handleUseCurrentLocation}
                   className="mt-2 text-xs font-semibold text-slate-600 hover:text-slate-950"
                 >
                   Use current location
@@ -808,106 +677,68 @@ export default function MainLayout() {
 
               <div className="relative flex-1">
                 <LocationSearchInput
-                  latitude={
-                    pickup?.latitude ??
-                    location.latitude
-                  }
-                  longitude={
-                    pickup?.longitude ??
-                    location.longitude
-                  }
-                  value={
-                    destination?.address ??
-                    ""
-                  }
+                  latitude={pickup?.latitude ?? location.latitude}
+                  longitude={pickup?.longitude ?? location.longitude}
+                  value={destination?.address ?? ""}
                   placeholder="Search destination"
                   label="Destination"
-                  onSelect={
-                    handleDestinationSelect
-                  }
+                  onSelect={handleDestinationSelect}
                 />
               </div>
             </div>
           </div>
 
-          {destination &&
-            distanceKm &&
-            durationMinutes && (
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-slate-50 p-3">
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <Route
-                      size={15}
-                    />
+          {destination && distanceKm && durationMinutes && (
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-slate-50 p-3">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <Route size={15} />
 
-                    <span className="text-xs">
-                      Distance
-                    </span>
-                  </div>
-
-                  <p className="mt-1 text-lg font-bold">
-                    {distanceKm}
-                    <span className="ml-1 text-xs font-medium text-slate-400">
-                      km
-                    </span>
-                  </p>
+                  <span className="text-xs">Distance</span>
                 </div>
 
-                <div className="rounded-xl bg-slate-50 p-3">
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <Clock3
-                      size={15}
-                    />
-
-                    <span className="text-xs">
-                      ETA
-                    </span>
-                  </div>
-
-                  <p className="mt-1 text-lg font-bold">
-                    {durationMinutes}
-                    <span className="ml-1 text-xs font-medium text-slate-400">
-                      min
-                    </span>
-                  </p>
-                </div>
+                <p className="mt-1 text-lg font-bold">
+                  {distanceKm}
+                  <span className="ml-1 text-xs font-medium text-slate-400">
+                    km
+                  </span>
+                </p>
               </div>
-            )}
+
+              <div className="rounded-xl bg-slate-50 p-3">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <Clock3 size={15} />
+
+                  <span className="text-xs">ETA</span>
+                </div>
+
+                <p className="mt-1 text-lg font-bold">
+                  {durationMinutes}
+                  <span className="ml-1 text-xs font-medium text-slate-400">
+                    min
+                  </span>
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="mt-5">
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold">
-                Choose your ride
-              </p>
+              <p className="text-sm font-semibold">Choose your ride</p>
 
-              <span className="text-xs text-slate-400">
-                Select vehicle
-              </span>
+              <span className="text-xs text-slate-400">Select vehicle</span>
             </div>
 
             <div className="grid grid-cols-3 gap-2">
-              {(
-                [
-                  "BIKE",
-                  "CAR",
-                  "PREMIUM",
-                ] as VehicleType[]
-              ).map(
-                (type) => {
-                  const selected =
-                    vehicle ===
-                    type;
+              {(["BIKE", "CAR", "PREMIUM"] as VehicleType[]).map((type) => {
+                const selected = vehicle === type;
 
-                  return (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() =>
-                        setVehicle(
-                          type,
-                        )
-                      }
-                      className={`
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setVehicle(type)}
+                    className={`
                         rounded-xl
                         border
                         p-3
@@ -919,35 +750,23 @@ export default function MainLayout() {
                             : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                         }
                       `}
-                    >
-                      {type ===
-                        "BIKE" && (
-                        <Bike size={20} />
-                      )}
+                  >
+                    {type === "BIKE" && <Bike size={20} />}
 
-                      {type ===
-                        "CAR" && (
-                        <Car size={20} />
-                      )}
+                    {type === "CAR" && <Car size={20} />}
 
-                      {type ===
-                        "PREMIUM" && (
-                        <Crown size={20} />
-                      )}
+                    {type === "PREMIUM" && <Crown size={20} />}
 
-                      <p className="mt-2 text-xs font-semibold">
-                        {type ===
-                        "PREMIUM"
-                          ? "Premium"
-                          : type ===
-                              "BIKE"
-                            ? "Bike"
-                            : "Car"}
-                      </p>
-                    </button>
-                  );
-                },
-              )}
+                    <p className="mt-2 text-xs font-semibold">
+                      {type === "PREMIUM"
+                        ? "Premium"
+                        : type === "BIKE"
+                          ? "Bike"
+                          : "Car"}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -957,40 +776,30 @@ export default function MainLayout() {
             }}
             type="button"
             disabled={
-              !pickup ||
-              !destination ||
-              !passengerId ||
-              createRide.isPending
+              !pickup || !destination || !passengerId || createRide.isPending
             }
-            onClick={
-              handleRequestRide
-            }
+            onClick={handleRequestRide}
             className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {createRide.isPending
               ? "Finding a driver..."
-              : pickup &&
-                  destination
+              : pickup && destination
                 ? "Request Ride"
                 : "Choose pickup and destination"}
 
-            {!createRide.isPending &&
-              pickup &&
-              destination && (
-                <Navigation
-                  size={16}
-                />
-              )}
+            {!createRide.isPending && pickup && destination && (
+              <Navigation size={16} />
+            )}
           </motion.button>
 
           {createRide.isError && (
             <p className="mt-3 text-center text-xs text-red-500">
-              Failed to create ride.
-              Please try again.
+              Failed to create ride. Please try again.
             </p>
           )}
         </div>
       </motion.div>
+      
     </main>
   );
 }
@@ -1001,9 +810,7 @@ type LocationSearchInputProps = {
   value: string;
   placeholder: string;
   label: string;
-  onSelect: (
-    location: SearchResult,
-  ) => void;
+  onSelect: (location: SearchResult) => void;
 };
 
 function LocationSearchInput({
@@ -1014,153 +821,81 @@ function LocationSearchInput({
   label,
   onSelect,
 }: LocationSearchInputProps) {
-  const [query, setQuery] =
-    useState(value);
+  const [query, setQuery] = useState(value);
 
-  const [results, setResults] =
-    useState<SearchResult[]>(
-      [],
-    );
+  const [results, setResults] = useState<SearchResult[]>([]);
 
-  const [searching, setSearching] =
-    useState(false);
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     setQuery(value);
   }, [value]);
 
   useEffect(() => {
-    const trimmed =
-      query.trim();
+    const trimmed = query.trim();
 
-    if (
-      trimmed.length < 2 ||
-      trimmed === value
-    ) {
+    if (trimmed.length < 2 || trimmed === value) {
       setResults([]);
       return;
     }
 
-    const timer =
-      setTimeout(
-        async () => {
-          try {
-            setSearching(
-              true,
-            );
+    const timer = setTimeout(async () => {
+      try {
+        setSearching(true);
 
-            const key =
-              import.meta.env
-                .VITE_MAPTILER_API_KEY;
+        const key = import.meta.env.VITE_MAPTILER_API_KEY;
 
-            if (!key) {
-              console.error(
-                "VITE_MAPTILER_API_KEY is missing",
-              );
+        if (!key) {
+          console.error("VITE_MAPTILER_API_KEY is missing");
 
-              return;
-            }
+          return;
+        }
 
-            const url =
-              `https://api.maptiler.com/geocoding/${encodeURIComponent(trimmed)}.json`;
+        const url = `https://api.maptiler.com/geocoding/${encodeURIComponent(trimmed)}.json`;
 
-            const params =
-              new URLSearchParams({
-                key,
-                language:
-                  "en",
-                limit: "5",
-                proximity: `${longitude},${latitude}`,
-              });
+        const params = new URLSearchParams({
+          key,
+          language: "en",
+          limit: "5",
+          proximity: `${longitude},${latitude}`,
+        });
 
-            const response =
-              await fetch(
-                `${url}?${params.toString()}`,
-              );
+        const response = await fetch(`${url}?${params.toString()}`);
 
-            if (!response.ok) {
-              throw new Error(
-                `MapTiler error: ${response.status}`,
-              );
-            }
+        if (!response.ok) {
+          throw new Error(`MapTiler error: ${response.status}`);
+        }
 
-            const data =
-              await response.json();
+        const data = await response.json();
 
-            const locations: SearchResult[] =
-              (
-                data.features ??
-                []
-              )
-                .map(
-                  (
-                    feature: any,
-                  ) => {
-                    const [
-                      lon,
-                      lat,
-                    ] =
-                      feature
-                        ?.geometry
-                        ?.coordinates ??
-                      [];
+        const locations: SearchResult[] = (data.features ?? [])
+          .map((feature: any) => {
+            const [lon, lat] = feature?.geometry?.coordinates ?? [];
 
-                    return {
-                      id:
-                        feature.id,
-                      address:
-                        feature.place_name ??
-                        feature.text ??
-                        "Unknown location",
-                      latitude:
-                        lat,
-                      longitude:
-                        lon,
-                    };
-                  },
-                )
-                .filter(
-                  (
-                    item: SearchResult,
-                  ) =>
-                    Number.isFinite(
-                      item.latitude,
-                    ) &&
-                    Number.isFinite(
-                      item.longitude,
-                    ),
-                );
+            return {
+              id: feature.id,
+              address: feature.place_name ?? feature.text ?? "Unknown location",
+              latitude: lat,
+              longitude: lon,
+            };
+          })
+          .filter(
+            (item: SearchResult) =>
+              Number.isFinite(item.latitude) && Number.isFinite(item.longitude),
+          );
 
-            setResults(
-              locations,
-            );
-          } catch (error) {
-            console.error(
-              `${label} search failed:`,
-              error,
-            );
+        setResults(locations);
+      } catch (error) {
+        console.error(`${label} search failed:`, error);
 
-            setResults([]);
-          } finally {
-            setSearching(
-              false,
-            );
-          }
-        },
-        350,
-      );
+        setResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 350);
 
-    return () =>
-      clearTimeout(
-        timer,
-      );
-  }, [
-    query,
-    latitude,
-    longitude,
-    value,
-    label,
-  ]);
+    return () => clearTimeout(timer);
+  }, [query, latitude, longitude, value, label]);
 
   return (
     <div className="relative">
@@ -1170,11 +905,7 @@ function LocationSearchInput({
 
       <input
         value={query}
-        onChange={(event) =>
-          setQuery(
-            event.target.value,
-          )
-        }
+        onChange={(event) => setQuery(event.target.value)}
         placeholder={placeholder}
         className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900 focus:bg-white"
       />
@@ -1183,78 +914,46 @@ function LocationSearchInput({
         <div className="absolute right-4 top-[calc(50%+10px)] h-4 w-4 -translate-y-1/2 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900" />
       )}
 
-      {results.length >
-        0 && (
+      {results.length > 0 && (
         <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[100] overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-2xl">
-          {results.map(
-            (result) => (
-              <button
-                key={
-                  result.id
-                }
-                type="button"
-                onClick={() => {
-                  setQuery(
-                    result.address,
-                  );
+          {results.map((result) => (
+            <button
+              key={result.id}
+              type="button"
+              onClick={() => {
+                setQuery(result.address);
 
-                  setResults(
-                    [],
-                  );
+                setResults([]);
 
-                  onSelect(
-                    result,
-                  );
-                }}
-                className="flex w-full items-start gap-3 rounded-lg p-3 text-left transition hover:bg-slate-50"
-              >
-                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100">
-                  <MapPin
-                    size={15}
-                    className="text-slate-600"
-                  />
-                </div>
+                onSelect(result);
+              }}
+              className="flex w-full items-start gap-3 rounded-lg p-3 text-left transition hover:bg-slate-50"
+            >
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100">
+                <MapPin size={15} className="text-slate-600" />
+              </div>
 
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-slate-900">
-                    {
-                      result.address
-                    }
-                  </p>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-slate-900">
+                  {result.address}
+                </p>
 
-                  <p className="mt-0.5 text-xs text-slate-400">
-                    Select location
-                  </p>
-                </div>
-              </button>
-            ),
-          )}
+                <p className="mt-0.5 text-xs text-slate-400">Select location</p>
+              </div>
+            </button>
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-function removeRoute(
-  map: MapLibreMap,
-) {
-  if (
-    map.getLayer(
-      "ride-route",
-    )
-  ) {
-    map.removeLayer(
-      "ride-route",
-    );
+function removeRoute(map: MapLibreMap) {
+  if (map.getLayer("ride-route")) {
+    map.removeLayer("ride-route");
   }
 
-  if (
-    map.getSource(
-      "ride-route",
-    )
-  ) {
-    map.removeSource(
-      "ride-route",
-    );
+  if (map.getSource("ride-route")) {
+    map.removeSource("ride-route");
   }
 }

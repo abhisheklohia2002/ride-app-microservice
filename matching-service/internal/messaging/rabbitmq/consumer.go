@@ -125,3 +125,31 @@ func (c *Consumer) Close() {
 func (c *Consumer) Connection() *amqp091.Connection {
 	return c.conn
 }
+
+func (c *Consumer) Bind(
+	queueName string,
+	exchange string,
+	routingKey string,
+) error {
+
+	_, err := c.channel.QueueDeclare(
+		queueName,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return c.channel.QueueBind(
+		queueName,
+		routingKey,
+		exchange,
+		false,
+		nil,
+	)
+}

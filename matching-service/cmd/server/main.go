@@ -11,10 +11,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ride-app/ride-matching-service/internal/config"
 	"github.com/ride-app/ride-matching-service/internal/consumers"
+	"github.com/ride-app/ride-matching-service/internal/handlers"
 	"github.com/ride-app/ride-matching-service/internal/messaging/rabbitmq"
 	"github.com/ride-app/ride-matching-service/internal/redis"
 	"github.com/ride-app/ride-matching-service/internal/repository"
 	"github.com/ride-app/ride-matching-service/internal/services"
+	matchingWebSocket "github.com/ride-app/ride-matching-service/internal/websocket"
 	// "github.com/ride-app/shared/messaging/rabbitmq"
 )
 
@@ -91,10 +93,12 @@ func main() {
 			err,
 		)
 	}
+	passengerHub := matchingWebSocket.NewHub()
 
 	rideConsumer := consumers.NewRideConsumer(
 		rabbitConsumer,
 		matchingService,
+		passengerHub,
 	)
 
 	if err := rideConsumer.Start(ctx); err != nil {
@@ -108,7 +112,7 @@ func main() {
 
 	r.Use(cors.New(cors.Config{
 		AllowOrigins: []string{
-			cfg.CLIENT_URL,
+			cfg.CLIENT_URL, "http://localhost:5173",
 		},
 
 		AllowMethods: []string{
@@ -144,6 +148,10 @@ func main() {
 		})
 	})
 
+	r.GET(
+		"/ws/passenger",
+		handlers.PassengerSocket(passengerHub),
+	)
 	log.Println("Matching Service HTTP server running on :8085")
 	log.Println("Driver location consumer started")
 	log.Println("Ride searching consumer started")

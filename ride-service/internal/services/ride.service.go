@@ -314,6 +314,7 @@ func (s serviceImpl) AcceptRide(
 				RideID:      int64(updatedRide.ID),
 				PassengerID: updatedRide.PassengerID,
 				DriverID:    req.DriverID,
+				DriverName:  "David",
 			}
 
 			payload, err := json.Marshal(event)

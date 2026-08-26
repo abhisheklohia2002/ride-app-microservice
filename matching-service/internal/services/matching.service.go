@@ -9,6 +9,7 @@ import (
 	"github.com/ride-app/ride-matching-service/internal/events"
 	"github.com/ride-app/ride-matching-service/internal/messaging/rabbitmq"
 	"github.com/ride-app/ride-matching-service/internal/repository"
+	
 )
 
 type MatchingService struct {

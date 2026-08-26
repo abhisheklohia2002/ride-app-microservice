@@ -14,4 +14,5 @@ type RideAssignedEvent struct {
 	RideID      int64  `json:"ride_id"`
 	PassengerID uint64 `json:"passenger_id"`
 	DriverID    uint64 `json:"driver_id"`
+	DriverName  string `json:"driver_name"`
 }
