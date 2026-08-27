@@ -4,19 +4,20 @@ import { useAuthStore } from "../stores/auth/auth.store";
 import type { UserRole } from "../stores/auth/auth.store";
 
 
-
 interface ProtectedRouteProps {
   allowedRoles?: UserRole[];
 }
 
-export function ProtectedRoute({
+export  function ProtectedRoute({
   allowedRoles,
 }: ProtectedRouteProps) {
+
+  
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore(
     (state) => state.isAuthenticated,
   );
-
+  console.log(user)
   if (!isAuthenticated || !user) {
     return (
       <Navigate

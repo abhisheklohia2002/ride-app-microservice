@@ -37,6 +37,7 @@ import {
   disconnectPassengerSocket,
 } from "../common/passenger-socket";
 import { useRideTrackingStore } from "../stores/ride/rideTracking.store";
+import ProfileMenu from "../components/ProfileMenu";
 
 type SearchResult = {
   id: string;
@@ -797,6 +798,13 @@ export default function MainLayout() {
       >
         <Navigation size={18} />
       </button>
+       <button
+        type="button"
+        className="absolute right-5 bottom-5 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xl"
+      >
+        <ProfileMenu  />
+      </button>
+
       {rideSearchError && (
         <section className="absolute bottom-5 left-5 right-5 z-40 mx-auto max-w-md rounded-3xl bg-white p-6 text-center shadow-2xl">
           <h2 className="text-lg font-bold text-slate-950">No driver found</h2>

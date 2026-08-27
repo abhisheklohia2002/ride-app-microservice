@@ -36,9 +36,10 @@ export const useLogout = () => {
   });
 };
 
-export const useMe = () => {
+
+export const useGetMe = () => {
   return useQuery({
-    queryKey: ["auth", "me"],
+    queryKey: ["me"],
     queryFn: getMe,
     retry: false,
   });

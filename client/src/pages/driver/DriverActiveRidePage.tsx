@@ -16,6 +16,7 @@ import {
   useDriverLocation,
   type DriverLocation,
 } from "../../http/driver/hooks/use-driver-location";
+import ProfileMenu from "../../components/ProfileMenu";
 
 interface ActiveRide {
   id: number;
@@ -344,6 +345,12 @@ export default function DriverActiveRidePage({ ride }: Props) {
         DRIVER_ASSIGNED
       </div>
 
+       <button
+              type="button"
+              className="absolute right-5 bottom-5 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xl"
+            >
+              <ProfileMenu  />
+            </button>
       <section className="absolute bottom-4 left-4 right-4 z-20 rounded-3xl bg-white p-5 shadow-2xl md:left-5 md:right-auto md:w-[440px]">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100">

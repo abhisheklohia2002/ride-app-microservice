@@ -1,4 +1,5 @@
 import { api } from "../../lib/axios";
+import type { User } from "../../stores/auth/auth.store";
 
 import type {
   AuthResponse,
@@ -30,16 +31,17 @@ export const login = async (
 
 export const logout = async () => {
   const { data } = await api.post(
-    "/api/auth/logout",
+    "/api/logout",
   );
 
   return data;
 };
 
-export const getMe = async () => {
-  const { data } = await api.get<AuthResponse>(
-    "/api/auth/me",
-  );
-
+export const getMe = async (): Promise<User> => {
+  const { data } = await api.get("/api/self");
   return data;
 };
+
+
+
+

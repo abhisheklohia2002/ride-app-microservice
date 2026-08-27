@@ -2,18 +2,34 @@ import { App as AntApp, ConfigProvider, theme } from "antd";
 import { useThemeMode } from "./context/ThemeProvider/ThemeProvider";
 import { RouterProvider } from "react-router-dom";
 
-
 import { router } from "./app/router";
+import { useGetMe } from "./http/auth/hooks/use-auth";
+import { useAuthStore } from "./stores/auth/auth.store";
+import { useEffect } from "react";
 
 function App() {
   const { isDarkMode } = useThemeMode();
+  const { data, isLoading } = useGetMe();
+  const setUser = useAuthStore((state) => state.setUser);
+
+  useEffect(() => {
+    if (data) {
+      setUser(data)
+    }
+  }, [data, setUser]);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <ConfigProvider
       theme={{
-        algorithm: isDarkMode
-          ? theme.darkAlgorithm
-          : theme.defaultAlgorithm,
+        algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
 
         token: {
           borderRadius: 12,
@@ -116,9 +132,7 @@ function App() {
               },
 
           Card: {
-            colorBgContainer: isDarkMode
-              ? "#111C2E"
-              : "#FFFFFF",
+            colorBgContainer: isDarkMode ? "#111C2E" : "#FFFFFF",
           },
 
           Button: {
@@ -130,145 +144,83 @@ function App() {
             headerColor: isDarkMode ? "#EAF0F7" : "#111827",
             rowHoverBg: isDarkMode ? "#162238" : "#F8FAFC",
 
-            borderColor: isDarkMode
-              ? "#253249"
-              : "#E2E8F0",
+            borderColor: isDarkMode ? "#253249" : "#E2E8F0",
 
-            colorBgContainer: isDarkMode
-              ? "#111C2E"
-              : "#FFFFFF",
+            colorBgContainer: isDarkMode ? "#111C2E" : "#FFFFFF",
 
-            colorText: isDarkMode
-              ? "#EAF0F7"
-              : "#111827",
+            colorText: isDarkMode ? "#EAF0F7" : "#111827",
 
-            colorTextHeading: isDarkMode
-              ? "#EAF0F7"
-              : "#111827",
+            colorTextHeading: isDarkMode ? "#EAF0F7" : "#111827",
           },
 
           Pagination: {
-            itemActiveBg: isDarkMode
-              ? "#111C2E"
-              : "#E6FFFB",
+            itemActiveBg: isDarkMode ? "#111C2E" : "#E6FFFB",
 
-            colorPrimary: isDarkMode
-              ? "#22C7B8"
-              : "#109B9C",
+            colorPrimary: isDarkMode ? "#22C7B8" : "#109B9C",
 
-            colorPrimaryHover: isDarkMode
-              ? "#35D6C8"
-              : "#14B8A6",
+            colorPrimaryHover: isDarkMode ? "#35D6C8" : "#14B8A6",
 
-            colorText: isDarkMode
-              ? "#EAF0F7"
-              : "#111827",
+            colorText: isDarkMode ? "#EAF0F7" : "#111827",
 
-            colorTextDisabled: isDarkMode
-              ? "#64748B"
-              : "#94A3B8",
+            colorTextDisabled: isDarkMode ? "#64748B" : "#94A3B8",
 
-            colorBgContainer: isDarkMode
-              ? "#111C2E"
-              : "#FFFFFF",
+            colorBgContainer: isDarkMode ? "#111C2E" : "#FFFFFF",
 
-            colorBorder: isDarkMode
-              ? "#253249"
-              : "#E2E8F0",
+            colorBorder: isDarkMode ? "#253249" : "#E2E8F0",
           },
 
           Form: {
-            labelColor: isDarkMode
-              ? "#CBD5E1"
-              : "#334155",
+            labelColor: isDarkMode ? "#CBD5E1" : "#334155",
           },
 
           Modal: {
-            contentBg: isDarkMode
-              ? "#111C2E"
-              : "#FFFFFF",
+            contentBg: isDarkMode ? "#111C2E" : "#FFFFFF",
 
-            headerBg: isDarkMode
-              ? "#111C2E"
-              : "#FFFFFF",
+            headerBg: isDarkMode ? "#111C2E" : "#FFFFFF",
 
-            titleColor: isDarkMode
-              ? "#EAF0F7"
-              : "#111827",
+            titleColor: isDarkMode ? "#EAF0F7" : "#111827",
           },
 
           Drawer: {
-            colorBgElevated: isDarkMode
-              ? "#111C2E"
-              : "#FFFFFF",
+            colorBgElevated: isDarkMode ? "#111C2E" : "#FFFFFF",
 
-            colorText: isDarkMode
-              ? "#EAF0F7"
-              : "#111827",
+            colorText: isDarkMode ? "#EAF0F7" : "#111827",
           },
 
           Input: {
-            colorBgContainer: isDarkMode
-              ? "#0F172A"
-              : "#FFFFFF",
+            colorBgContainer: isDarkMode ? "#0F172A" : "#FFFFFF",
 
-            colorBorder: isDarkMode
-              ? "#253249"
-              : "#E2E8F0",
+            colorBorder: isDarkMode ? "#253249" : "#E2E8F0",
 
-            colorText: isDarkMode
-              ? "#EAF0F7"
-              : "#111827",
+            colorText: isDarkMode ? "#EAF0F7" : "#111827",
 
-            colorTextPlaceholder: isDarkMode
-              ? "#64748B"
-              : "#94A3B8",
+            colorTextPlaceholder: isDarkMode ? "#64748B" : "#94A3B8",
           },
 
           Select: {
-            colorBgContainer: isDarkMode
-              ? "#0F172A"
-              : "#FFFFFF",
+            colorBgContainer: isDarkMode ? "#0F172A" : "#FFFFFF",
 
-            colorBgElevated: isDarkMode
-              ? "#111C2E"
-              : "#FFFFFF",
+            colorBgElevated: isDarkMode ? "#111C2E" : "#FFFFFF",
 
-            colorBorder: isDarkMode
-              ? "#253249"
-              : "#E2E8F0",
+            colorBorder: isDarkMode ? "#253249" : "#E2E8F0",
 
-            colorText: isDarkMode
-              ? "#EAF0F7"
-              : "#111827",
+            colorText: isDarkMode ? "#EAF0F7" : "#111827",
 
-            colorTextPlaceholder: isDarkMode
-              ? "#64748B"
-              : "#94A3B8",
+            colorTextPlaceholder: isDarkMode ? "#64748B" : "#94A3B8",
 
-            optionSelectedBg: isDarkMode
-              ? "#1B2940"
-              : "#E6FFFB",
+            optionSelectedBg: isDarkMode ? "#1B2940" : "#E6FFFB",
 
-            optionActiveBg: isDarkMode
-              ? "#162238"
-              : "#F0FDFA",
+            optionActiveBg: isDarkMode ? "#162238" : "#F0FDFA",
           },
 
           Upload: {
-            colorText: isDarkMode
-              ? "#EAF0F7"
-              : "#111827",
+            colorText: isDarkMode ? "#EAF0F7" : "#111827",
           },
 
           Typography: {
-            colorText: isDarkMode
-              ? "#EAF0F7"
-              : "#111827",
+            colorText: isDarkMode ? "#EAF0F7" : "#111827",
 
-            colorTextHeading: isDarkMode
-              ? "#EAF0F7"
-              : "#111827",
+            colorTextHeading: isDarkMode ? "#EAF0F7" : "#111827",
           },
         },
       }}

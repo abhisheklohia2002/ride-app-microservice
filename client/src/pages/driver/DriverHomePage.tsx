@@ -35,13 +35,14 @@ import { useAuthStore } from "../../stores/auth/auth.store";
 import { useAcceptRide, useCancelRide } from "../../http/ride/hooks/use-rides";
 import DriverActiveRidePage from "./DriverActiveRidePage";
 import { useActiveDriverRide } from "../../http/driver/hooks/use-driver";
+import ProfileMenu from "../../components/ProfileMenu";
 
 export default function DriverHomePage() {
-	const { notification } = AntApp.useApp();
+  const { notification } = AntApp.useApp();
   const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(
     null,
   );
-  
+
   const acceptRideMutation = useAcceptRide();
   const cancelRide = useCancelRide();
   const { location } = useCurrentLocation();
@@ -58,12 +59,7 @@ export default function DriverHomePage() {
   const mapContainer = useRef<HTMLDivElement | null>(null);
 
   const mapRef = useRef<MapLibreMap | null>(null);
-const {
-  data: activeRideResponse,
-} =
-  useActiveDriverRide(
-    Number(driverId),
-  );
+  const { data: activeRideResponse } = useActiveDriverRide(Number(driverId));
   const driverMarker = useRef<Marker | null>(null);
   const activeRide = useDriverRideStore((state) => state.activeRide);
   const MAPTILER_API_KEY = import.meta.env.VITE_MAPTILER_API_KEY;
@@ -178,33 +174,26 @@ const {
     }
   }, [driverLocation, location]);
 
- useEffect(() => {
-  if (!isOnline || !driverId) {
-    disconnectDriverSocket();
-    return;
-  }
+  useEffect(() => {
+    if (!isOnline || !driverId) {
+      disconnectDriverSocket();
+      return;
+    }
 
-  console.log(
-    "CONNECTING DRIVER SOCKET driver=",
-    driverId,
-  );
+    console.log("CONNECTING DRIVER SOCKET driver=", driverId);
 
-  connectDriverSocket(
-    Number(driverId),
-    (message) => {
-      console.log(
-        "DRIVER WS MESSAGE:",
-        message,
-      );
+    connectDriverSocket(Number(driverId), (message) => {
+      console.log("DRIVER WS MESSAGE:", message);
 
       if (message.type === "RIDE_REQUEST") {
-        useDriverRideStore
-          .getState()
-          .setRideRequest(message.data as any);
+        useDriverRideStore.getState().setRideRequest(message.data as any);
       }
 
       if (message.type === "RIDE_CANCELLED") {
-        const cancelledRide = message.data as { ride_id: number; cancelled_by: string };
+        const cancelledRide = message.data as {
+          ride_id: number;
+          cancelled_by: string;
+        };
         const currentRequest = useDriverRideStore.getState().rideRequest;
 
         if (currentRequest?.ride_id === cancelledRide.ride_id) {
@@ -212,20 +201,19 @@ const {
         }
 
         if (cancelledRide.cancelled_by === "PASSENGER") {
-		  notification.info({
-			message: "Ride cancelled",
-			description: "The passenger cancelled the ride request.",
-			duration: 5,
-		  });
+          notification.info({
+            message: "Ride cancelled",
+            description: "The passenger cancelled the ride request.",
+            duration: 5,
+          });
         }
       }
-    },
-  );
+    });
 
-  return () => {
-    disconnectDriverSocket();
-  };
-}, [isOnline, driverId, notification]);
+    return () => {
+      disconnectDriverSocket();
+    };
+  }, [isOnline, driverId, notification]);
 
   useEffect(() => {
     if (isOnline) {
@@ -238,37 +226,25 @@ const {
       driverMarker.current = null;
     }
   }, [isOnline]);
-useEffect(() => {
-  const ride =
-    activeRideResponse?.data?.ride;
+  useEffect(() => {
+    const ride = activeRideResponse?.data?.ride;
 
-  if (!ride) {
-    return;
-  }
+    if (!ride) {
+      return;
+    }
 
-  useDriverRideStore
-    .getState()
-    .setActiveRide({
+    useDriverRideStore.getState().setActiveRide({
       id: ride.id,
-      driverId:
-        ride.driver_id,
-      passengerId:
-        +ride.passenger_id,
-      pickupLatitude:
-        ride.pickup.latitude,
-      pickupLongitude:
-        ride.pickup.longitude,
-      dropoffLatitude:
-        ride.destination.latitude,
-      dropoffLongitude:
-        ride.destination.longitude,
+      driverId: ride.driver_id,
+      passengerId: +ride.passenger_id,
+      pickupLatitude: ride.pickup.latitude,
+      pickupLongitude: ride.pickup.longitude,
+      dropoffLatitude: ride.destination.latitude,
+      dropoffLongitude: ride.destination.longitude,
       status: ride.status,
-      passengerName:
-        ride.passenger?.name,
+      passengerName: ride.passenger?.name,
     });
-}, [
-  activeRideResponse,
-]);
+  }, [activeRideResponse]);
   const handleToggle = () => {
     if (isOnline) {
       setOffline();
@@ -408,6 +384,12 @@ useEffect(() => {
           <Navigation size={18} />
         </button>
 
+        <button
+               type="button"
+               className="absolute right-5 bottom-5 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xl"
+             >
+               <ProfileMenu  />
+             </button>
         <section className="absolute bottom-0 left-0 right-0 z-20 rounded-t-[30px] bg-white shadow-2xl md:bottom-5 md:left-5 md:right-auto md:w-[440px] md:rounded-[30px]">
           <div className="p-5 md:p-6">
             <div className="flex items-start justify-between">

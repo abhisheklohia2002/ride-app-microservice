@@ -49,14 +49,14 @@ func main() {
 	)
 
 	mux.Handle(
-		"GET /self",
+		"GET /api/self",
 		auth.AuthMiddleware(
 			http.HandlerFunc(driver.HandleDriverSelf),
 		),
 	)
 
 	mux.HandleFunc(
-		"POST /logout",
+		"POST /api/logout",
 		driver.HandleDriverLogout,
 	)
 

@@ -36,5 +36,6 @@ export const useAuthStore = create<AuthState>(
         user: null,
         isAuthenticated: false,
       }),
+      
   }),
 );
