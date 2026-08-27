@@ -10,23 +10,6 @@ import (
 	pb "github.com/ride-app/shared/pkg/ride"
 )
 
-type CreateRideRequest struct {
-	Pickup struct {
-		Latitude  float64 `json:"latitude"`
-		Longitude float64 `json:"longitude"`
-		Address   string  `json:"address"`
-	} `json:"pickup"`
-
-	Destination struct {
-		Latitude  float64 `json:"latitude"`
-		Longitude float64 `json:"longitude"`
-		Address   string  `json:"address"`
-	} `json:"destination"`
-
-	VehicleType string `json:"vehicle_type"`
-	PassengerID int64  `json:"passengerId"`
-}
-
 func CreateRide(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodPost {
@@ -206,7 +189,8 @@ func CancelRide(
 	}
 
 	var body struct {
-		CancelledBy string `json:"cancelledBy"`
+		CancelledBy string  `json:"cancelledBy"`
+		DriverID    *uint64 `json:"driverId,omitempty"`
 	}
 
 	if err := json.NewDecoder(
@@ -235,6 +219,7 @@ func CancelRide(
 			&pb.CancelRideRequest{
 				RideId:      rideID,
 				CancelledBy: body.CancelledBy,
+				DriverId:    body.DriverID,
 			},
 		)
 
@@ -256,6 +241,104 @@ func CancelRide(
 		map[string]any{
 			"message": "ride cancelled",
 			"data":    res,
+		},
+	)
+}
+
+func GetActivePassengerRide(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	passengerIDString := r.PathValue("passenger")
+
+	passengerID, err := strconv.ParseUint(
+		passengerIDString,
+		10,
+		64,
+	)
+	if err != nil {
+		http.Error(
+			w,
+			"invalid passenger id",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	res, err :=
+		grpcRideClient.RideClient.GetActiveRideByPassenger(
+			r.Context(),
+			&pb.GetActiveRideRequest{
+				UserId: passengerID,
+			},
+		)
+
+	if err != nil {
+		http.Error(
+			w,
+			err.Error(),
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	w.Header().Set(
+		"Content-Type",
+		"application/json",
+	)
+
+	_ = json.NewEncoder(w).Encode(
+		map[string]any{
+			"data": res,
+		},
+	)
+}
+
+func GetActiveDriverRide(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	driverIDString := r.PathValue("driverId")
+
+	driverID, err := strconv.ParseUint(
+		driverIDString,
+		10,
+		64,
+	)
+	if err != nil {
+		http.Error(
+			w,
+			"invalid driver id",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	res, err :=
+		grpcRideClient.RideClient.GetActiveRideByDriver(
+			r.Context(),
+			&pb.GetActiveRideRequest{
+				UserId: driverID,
+			},
+		)
+
+	if err != nil {
+		http.Error(
+			w,
+			err.Error(),
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	w.Header().Set(
+		"Content-Type",
+		"application/json",
+	)
+
+	_ = json.NewEncoder(w).Encode(
+		map[string]any{
+			"data": res,
 		},
 	)
 }

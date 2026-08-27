@@ -139,6 +139,11 @@ func main() {
 		)
 	}
 
+	rideCancelledConsumer := rabbitmq.NewRideCancelledConsumer(rabbitConsumer, hub)
+	if err := rideCancelledConsumer.Start(ctx); err != nil {
+		log.Fatalf("failed to start ride cancellation consumer: %v", err)
+	}
+
 	// JWT
 	privateKey, err := auth.LoadRSAPrivateKeyFromEnv("JWT_PRIVATE_KEY")
 	if err != nil {

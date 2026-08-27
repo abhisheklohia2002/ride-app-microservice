@@ -16,3 +16,14 @@ export const updateDriverLocation = async (
 
   return data;
 };
+
+
+export const getActiveDriverRide = async (
+  driverId: number,
+) => {
+  const { data } = await api.get(
+    `/api/rides/driver/${driverId}/active`,
+  );
+
+  return data;
+};

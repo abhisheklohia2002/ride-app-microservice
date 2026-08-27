@@ -89,6 +89,7 @@ export default function AuthForm() {
     e.preventDefault();
 
     if (isLogin) {
+      console.log('login')
       loginMutation.mutate(
         loginForm,
         {
@@ -98,7 +99,7 @@ export default function AuthForm() {
             navigate(
               response.role === "DRIVER"
                 ? "/driver"
-                : "/",
+                : "/passenger",
             );
           },
         },
@@ -106,6 +107,7 @@ export default function AuthForm() {
 
       return;
     }
+      console.log('register')
 
     registerMutation.mutate(
       registerForm,

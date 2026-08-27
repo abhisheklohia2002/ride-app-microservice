@@ -1,8 +1,10 @@
+import type { DriverSocketMessage } from "../http/driver/hooks/driver-socket";
+
 let socket: WebSocket | null = null;
 
 export const connectDriverSocket = (
   driverId: number,
-  onMessage: (message: any) => void,
+  onMessage: (message: DriverSocketMessage) => void,
 ) => {
   socket = new WebSocket(
     `ws://localhost:8081/ws/driver?driverId=${driverId}`,
@@ -13,11 +15,15 @@ export const connectDriverSocket = (
   };
 
   socket.onmessage = (event) => {
-    const message = JSON.parse(event.data);
+    try {
+      const message = JSON.parse(event.data) as DriverSocketMessage;
 
-    console.log("Driver event:", message);
+      console.log("Driver event:", message);
 
-    onMessage(message);
+      onMessage(message);
+    } catch (error) {
+      console.error("Invalid driver WebSocket message:", error);
+    }
   };
 
   socket.onerror = (error) => {

@@ -1,6 +1,6 @@
 import type { CreateRideRequest } from '../dto';
-import { acceptRide, cancelRide, createRide } from './../api';
-import { useMutation } from "@tanstack/react-query";
+import { acceptRide, cancelRide, createRide, getActivePassengerRide } from './../api';
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 
 
@@ -32,9 +32,27 @@ export const useCancelRide = () => {
     mutationFn: ({
       rideId,
       cancelledBy,
+      driverId,
     }: {
       rideId: number;
       cancelledBy: "PASSENGER" | "DRIVER";
-    }) => cancelRide(rideId, cancelledBy),
+      driverId?: number;
+    }) => cancelRide(rideId, cancelledBy, driverId),
+  });
+};
+
+
+
+export const useActivePassengerRide = (
+  passengerId?: number,
+) => {
+  return useQuery({
+    queryKey: [
+      "active-passenger-ride",
+      passengerId,
+    ],
+    queryFn: () =>
+      getActivePassengerRide(passengerId!),
+    enabled: !!passengerId,
   });
 };

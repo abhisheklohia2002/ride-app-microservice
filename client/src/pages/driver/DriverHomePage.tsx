@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
+import { App as AntApp } from "antd";
+
 import { Map as MapLibreMap, Marker, NavigationControl } from "maplibre-gl";
 
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -32,9 +34,10 @@ import { useCurrentLocation } from "../../http/ride/hooks/use-current-location";
 import { useAuthStore } from "../../stores/auth/auth.store";
 import { useAcceptRide, useCancelRide } from "../../http/ride/hooks/use-rides";
 import DriverActiveRidePage from "./DriverActiveRidePage";
-import { useRideStore } from "../../stores/ride/ride.store";
+import { useActiveDriverRide } from "../../http/driver/hooks/use-driver";
 
 export default function DriverHomePage() {
+	const { notification } = AntApp.useApp();
   const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(
     null,
   );
@@ -55,7 +58,12 @@ export default function DriverHomePage() {
   const mapContainer = useRef<HTMLDivElement | null>(null);
 
   const mapRef = useRef<MapLibreMap | null>(null);
-
+const {
+  data: activeRideResponse,
+} =
+  useActiveDriverRide(
+    Number(driverId),
+  );
   const driverMarker = useRef<Marker | null>(null);
   const activeRide = useDriverRideStore((state) => state.activeRide);
   const MAPTILER_API_KEY = import.meta.env.VITE_MAPTILER_API_KEY;
@@ -192,7 +200,24 @@ export default function DriverHomePage() {
       if (message.type === "RIDE_REQUEST") {
         useDriverRideStore
           .getState()
-          .setRideRequest(message.data);
+          .setRideRequest(message.data as any);
+      }
+
+      if (message.type === "RIDE_CANCELLED") {
+        const cancelledRide = message.data as { ride_id: number; cancelled_by: string };
+        const currentRequest = useDriverRideStore.getState().rideRequest;
+
+        if (currentRequest?.ride_id === cancelledRide.ride_id) {
+          useDriverRideStore.getState().clearRideRequest();
+        }
+
+        if (cancelledRide.cancelled_by === "PASSENGER") {
+		  notification.info({
+			message: "Ride cancelled",
+			description: "The passenger cancelled the ride request.",
+			duration: 5,
+		  });
+        }
       }
     },
   );
@@ -200,7 +225,7 @@ export default function DriverHomePage() {
   return () => {
     disconnectDriverSocket();
   };
-}, [isOnline, driverId]);
+}, [isOnline, driverId, notification]);
 
   useEffect(() => {
     if (isOnline) {
@@ -213,7 +238,37 @@ export default function DriverHomePage() {
       driverMarker.current = null;
     }
   }, [isOnline]);
+useEffect(() => {
+  const ride =
+    activeRideResponse?.data?.ride;
 
+  if (!ride) {
+    return;
+  }
+
+  useDriverRideStore
+    .getState()
+    .setActiveRide({
+      id: ride.id,
+      driverId:
+        ride.driver_id,
+      passengerId:
+        +ride.passenger_id,
+      pickupLatitude:
+        ride.pickup.latitude,
+      pickupLongitude:
+        ride.pickup.longitude,
+      dropoffLatitude:
+        ride.destination.latitude,
+      dropoffLongitude:
+        ride.destination.longitude,
+      status: ride.status,
+      passengerName:
+        ride.passenger?.name,
+    });
+}, [
+  activeRideResponse,
+]);
   const handleToggle = () => {
     if (isOnline) {
       setOffline();
@@ -281,6 +336,7 @@ export default function DriverHomePage() {
       {
         rideId: rideRequest.ride_id,
         cancelledBy: "DRIVER",
+        driverId: Number(driverId),
       },
       {
         onSuccess: () => {

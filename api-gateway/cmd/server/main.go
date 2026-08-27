@@ -88,6 +88,15 @@ func main() {
 		"POST /api/rides/{rideId}/cancel",
 		ride.CancelRide,
 	)
+
+	mux.HandleFunc(
+		"/api/rides/passenger/{passenger}/active",
+		ride.GetActivePassengerRide,
+	)
+	mux.HandleFunc(
+		"/api/rides/driver/{driverId}/active",
+		ride.GetActiveDriverRide,
+	)
 	handler := middleware.CorsMiddleware(mux)
 
 	log.Println("API Gateway is running at http://localhost:8080")

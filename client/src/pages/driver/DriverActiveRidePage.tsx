@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   Map as MapLibreMap,
   Marker,
   NavigationControl,
   LngLatBounds,
-} from "maplibre-gl";   
+  type GeoJSONSource,
+} from "maplibre-gl";
+
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import { Navigation, Phone, Car } from "lucide-react";
@@ -32,6 +34,7 @@ export default function DriverActiveRidePage({ ride }: Props) {
     null,
   );
 
+  const [mapReady, setMapReady] = useState(false);
 
   const mapContainer = useRef<HTMLDivElement | null>(null);
 
@@ -47,148 +50,164 @@ export default function DriverActiveRidePage({ ride }: Props) {
 
   useDriverLocation({
     enabled: true,
+
     onLocationChange: (location) => {
       setDriverLocation(location);
     },
   });
 
- useEffect(() => {
-  if (
-    !mapContainer.current ||
-    mapRef.current ||
-    !MAPTILER_API_KEY
-  ) {
-    return;
-  }
+  const drawDriverRoute = useCallback(
+    (coordinates: [number, number][]) => {
+      const map = mapRef.current;
 
-  const map = new MapLibreMap({
-    container: mapContainer.current,
-    style:
-      `https://api.maptiler.com/maps/dataviz-light/style.json?key=${MAPTILER_API_KEY}`,
-    center: [
-      ride.pickupLongitude,
-      ride.pickupLatitude,
-    ],
-    zoom: 13,
-  });
+      if (!map || !mapReady) {
+        return;
+      }
 
-  map.addControl(
-    new NavigationControl(),
-    "top-right",
+      const geojson = {
+        type: "Feature" as const,
+
+        properties: {},
+
+        geometry: {
+          type: "LineString" as const,
+          coordinates,
+        },
+      };
+
+      const source = map.getSource("driver-route") as GeoJSONSource | undefined;
+
+      if (source) {
+        source.setData(geojson);
+        return;
+      }
+
+      map.addSource("driver-route", {
+        type: "geojson",
+        data: geojson,
+      });
+
+      if (!map.getLayer("driver-route")) {
+        map.addLayer({
+          id: "driver-route",
+          type: "line",
+          source: "driver-route",
+
+          layout: {
+            "line-cap": "round",
+            "line-join": "round",
+          },
+
+          paint: {
+            "line-color": "#111827",
+            "line-width": 6,
+            "line-opacity": 0.9,
+          },
+        });
+      }
+    },
+    [mapReady],
   );
 
-  map.once("load", () => {
-    pickupMarker.current = new Marker({
-      color: "#2563eb",
-    })
-      .setLngLat([
-        ride.pickupLongitude,
-        ride.pickupLatitude,
-      ])
-      .addTo(map);
-
-    destinationMarker.current = new Marker({
-      color: "#ef4444",
-    })
-      .setLngLat([
-        ride.dropoffLongitude,
-        ride.dropoffLatitude,
-      ])
-      .addTo(map);
-
-    if (driverLocation) {
-      driverMarker.current = new Marker({
-        color: "#10b981",
-      })
-        .setLngLat([
-          driverLocation.longitude,
-          driverLocation.latitude,
-        ])
-        .addTo(map);
-    }
-
-   const bounds = new LngLatBounds();
-    bounds.extend([
-      ride.pickupLongitude,
-      ride.pickupLatitude,
-    ]);
-
-    bounds.extend([
-      ride.dropoffLongitude,
-      ride.dropoffLatitude,
-    ]);
-
-    if (driverLocation) {
-      bounds.extend([
-        driverLocation.longitude,
-        driverLocation.latitude,
-      ]);
-    }
-
-    map.fitBounds(bounds, {
-      padding: {
-        top: 100,
-        bottom: 260,
-        left: 80,
-        right: 80,
-      },
-      maxZoom: 14,
-      duration: 800,
-    });
-  });
-
-  mapRef.current = map;
-
-  return () => {
-    driverMarker.current?.remove();
-    pickupMarker.current?.remove();
-    destinationMarker.current?.remove();
-
-    driverMarker.current = null;
-    pickupMarker.current = null;
-    destinationMarker.current = null;
-
-    map.remove();
-    mapRef.current = null;
-  };
-}, [
-  MAPTILER_API_KEY,
-  ride.pickupLatitude,
-  ride.pickupLongitude,
-  ride.dropoffLatitude,
-  ride.dropoffLongitude,
-]);
   useEffect(() => {
-    if (!mapRef.current) {
+    if (!mapContainer.current || mapRef.current || !MAPTILER_API_KEY) {
       return;
     }
 
-    const pickup: [number, number] = [
-      ride.pickupLongitude,
-      ride.pickupLatitude,
-    ];
+    const map = new MapLibreMap({
+      container: mapContainer.current,
 
-    const destination: [number, number] = [
-      ride.dropoffLongitude,
-      ride.dropoffLatitude,
-    ];
+      style: `https://api.maptiler.com/maps/dataviz-light/style.json?key=${MAPTILER_API_KEY}`,
 
-    if (!pickupMarker.current) {
-      pickupMarker.current = new Marker({
-        color: "#2563eb",
-      })
-        .setLngLat(pickup)
-        .addTo(mapRef.current);
-    }
+      center: [ride.pickupLongitude, ride.pickupLatitude],
 
-    if (!destinationMarker.current) {
-      destinationMarker.current = new Marker({
-        color: "#ef4444",
-      })
-        .setLngLat(destination)
-        .addTo(mapRef.current);
-    }
+      zoom: 13,
+    });
+
+    map.addControl(new NavigationControl(), "top-right");
+
+    map.on("load", () => {
+      setMapReady(true);
+
+      if (!pickupMarker.current) {
+        pickupMarker.current = new Marker({
+          color: "#2563eb",
+        })
+          .setLngLat([ride.pickupLongitude, ride.pickupLatitude])
+          .addTo(map);
+      }
+
+      if (!destinationMarker.current) {
+        destinationMarker.current = new Marker({
+          color: "#ef4444",
+        })
+          .setLngLat([ride.dropoffLongitude, ride.dropoffLatitude])
+          .addTo(map);
+      }
+
+      const bounds = new LngLatBounds();
+
+      bounds.extend([ride.pickupLongitude, ride.pickupLatitude]);
+
+      bounds.extend([ride.dropoffLongitude, ride.dropoffLatitude]);
+
+      if (driverLocation) {
+        if (!driverMarker.current) {
+          driverMarker.current = new Marker({
+            color: "#10b981",
+          })
+            .setLngLat([driverLocation.longitude, driverLocation.latitude])
+            .addTo(map);
+        }
+
+        bounds.extend([driverLocation.longitude, driverLocation.latitude]);
+      }
+
+      map.fitBounds(bounds, {
+        padding: {
+          top: 100,
+          bottom: 280,
+          left: 80,
+          right: 80,
+        },
+
+        maxZoom: 14,
+
+        duration: 800,
+      });
+    });
+
+    map.on("error", (event) => {
+      console.error("Driver map error:", event.error);
+    });
+
+    mapRef.current = map;
+
+    return () => {
+      setMapReady(false);
+
+      driverMarker.current?.remove();
+      pickupMarker.current?.remove();
+      destinationMarker.current?.remove();
+
+      driverMarker.current = null;
+      pickupMarker.current = null;
+      destinationMarker.current = null;
+
+      if (map.getLayer("driver-route")) {
+        map.removeLayer("driver-route");
+      }
+
+      if (map.getSource("driver-route")) {
+        map.removeSource("driver-route");
+      }
+
+      map.remove();
+
+      mapRef.current = null;
+    };
   }, [
+    MAPTILER_API_KEY,
     ride.pickupLatitude,
     ride.pickupLongitude,
     ride.dropoffLatitude,
@@ -196,7 +215,26 @@ export default function DriverActiveRidePage({ ride }: Props) {
   ]);
 
   useEffect(() => {
-    if (!mapRef.current || !driverLocation) {
+    if (!mapReady || !mapRef.current || !pickupMarker.current) {
+      return;
+    }
+
+    pickupMarker.current.setLngLat([ride.pickupLongitude, ride.pickupLatitude]);
+  }, [mapReady, ride.pickupLatitude, ride.pickupLongitude]);
+
+  useEffect(() => {
+    if (!mapReady || !mapRef.current || !destinationMarker.current) {
+      return;
+    }
+
+    destinationMarker.current.setLngLat([
+      ride.dropoffLongitude,
+      ride.dropoffLatitude,
+    ]);
+  }, [mapReady, ride.dropoffLatitude, ride.dropoffLongitude]);
+
+  useEffect(() => {
+    if (!mapReady || !mapRef.current || !driverLocation) {
       return;
     }
 
@@ -214,13 +252,70 @@ export default function DriverActiveRidePage({ ride }: Props) {
     } else {
       driverMarker.current.setLngLat(position);
     }
+  }, [driverLocation, mapReady]);
 
-    mapRef.current.easeTo({
-      center: position,
-      zoom: 15,
-      duration: 700,
-    });
-  }, [driverLocation]);
+  useEffect(() => {
+    if (!mapReady || !mapRef.current || !driverLocation) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchDriverRoute = async () => {
+      try {
+        const url =
+          `https://router.project-osrm.org/route/v1/driving/` +
+          `${ride.pickupLongitude},${ride.pickupLatitude};` +
+          `${ride.dropoffLongitude},${ride.dropoffLatitude}` +
+          `?overview=full&geometries=geojson`;
+
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          throw new Error(`Routing failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (cancelled) {
+          return;
+        }
+
+        const route = data?.routes?.[0];
+
+        if (!route) {
+          console.error("No route found");
+          return;
+        }
+
+        const coordinates = route?.geometry?.coordinates;
+
+        if (!Array.isArray(coordinates) || coordinates.length < 2) {
+          console.error("Route coordinates missing");
+          return;
+        }
+
+        drawDriverRoute(coordinates as [number, number][]);
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Driver route error:", error);
+        }
+      }
+    };
+
+    fetchDriverRoute();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    mapReady,
+    ride.pickupLatitude,
+    ride.pickupLongitude,
+    ride.dropoffLatitude,
+    ride.dropoffLongitude,
+    drawDriverRoute,
+  ]);
 
   const handleNavigate = () => {
     if (!driverLocation) {

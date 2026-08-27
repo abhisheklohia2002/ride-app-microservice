@@ -13,7 +13,14 @@ export interface RideRequest {
 
 export interface DriverSocketMessage {
   type: string;
-  data: RideRequest;
+  data: RideRequest | RideCancelledEvent;
+}
+
+export interface RideCancelledEvent {
+  ride_id: number;
+  passenger_id: number;
+  driver_id?: number;
+  cancelled_by: "PASSENGER" | "DRIVER";
 }
 
 export const connectDriverSocket = (

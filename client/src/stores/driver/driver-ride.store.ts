@@ -10,6 +10,8 @@ interface ActiveRide {
   dropoffLatitude: number;
   dropoffLongitude: number;
   status: string;
+  passengerId?:number;
+  passengerName?:string;
 }
 
 interface DriverRideStore {

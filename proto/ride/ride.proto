@@ -12,9 +12,14 @@ service RideService {
     rpc CreateRide(CreateRideRequest) returns (RideResponse);
     rpc AcceptRide(AcceptRideRequest) returns (RideResponse);
     rpc CancelRide(CancelRideRequest) returns (RideResponse);
+    rpc GetActiveRideByPassenger(GetActiveRideRequest) returns (RideResponse);
+    rpc GetActiveRideByDriver(GetActiveRideRequest) returns (RideResponse);
 
 }
 
+message GetActiveRideRequest {
+  uint64 user_id = 1;
+}
 
 message AcceptRideRequest {
     int64 ride_id = 1;
@@ -76,4 +81,5 @@ message RideResponse {
 message CancelRideRequest {
   int64 ride_id = 1;
   string cancelled_by = 2;
+  optional uint64 driver_id = 3;
 }

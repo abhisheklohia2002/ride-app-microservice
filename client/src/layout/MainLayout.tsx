@@ -24,7 +24,11 @@ import {
 } from "lucide-react";
 
 import { useCurrentLocation } from "../http/ride/hooks/use-current-location";
-import { useCancelRide, useCreateRide } from "../http/ride/hooks/use-rides";
+import {
+  useActivePassengerRide,
+  useCancelRide,
+  useCreateRide,
+} from "../http/ride/hooks/use-rides";
 import { useRideStore } from "../stores/ride/ride.store";
 import type { VehicleType } from "../http/ride/dto";
 import { useAuthStore } from "../stores/auth/auth.store";
@@ -43,7 +47,7 @@ type SearchResult = {
 
 export default function MainLayout() {
   const SEARCH_DURATION = 120;
-
+  const [mapReady, setMapReady] = useState(false);
   const [isSearchingDriver, setIsSearchingDriver] = useState(false);
 
   const [searchStartedAt, setSearchStartedAt] = useState<number | null>(null);
@@ -51,6 +55,7 @@ export default function MainLayout() {
   const [remainingSeconds, setRemainingSeconds] = useState(SEARCH_DURATION);
 
   const [rideSearchError, setRideSearchError] = useState<string | null>(null);
+  const [rideCancellationNotice, setRideCancellationNotice] = useState(false);
   const { location, loading, error } = useCurrentLocation();
   const driverLocation = useRideTrackingStore((state) => state.driverLocation);
   const createRide = useCreateRide();
@@ -58,8 +63,11 @@ export default function MainLayout() {
   const passengerId = useAuthStore((state) => state.user?.id);
   const assignedDriver = useRideTrackingStore((state) => state.assignedDriver);
   const setRide = useRideStore((state) => state.setRide);
+  const clearRide = useRideStore((state) => state.clearRide);
   const rideID = useRideStore((state) => state.rideId);
-
+  const { data: activeRideResponse } = useActivePassengerRide(
+    Number(passengerId),
+  );
   const cancelRide = useCancelRide();
   const [pickup, setPickup] = useState<SearchResult | null>(null);
 
@@ -87,59 +95,7 @@ export default function MainLayout() {
   const formattedTime = `${String(minutes).padStart(2, "0")}:${String(
     seconds,
   ).padStart(2, "0")}`;
-  const drawDriverRoute = useCallback((coordinates: [number, number][]) => {
-    const map = mapRef.current;
-
-    if (!map) {
-      return;
-    }
-
-    const geojson = {
-      type: "Feature" as const,
-      properties: {},
-      geometry: {
-        type: "LineString" as const,
-        coordinates,
-      },
-    };
-
-    const updateRoute = () => {
-      const source = map.getSource("driver-route");
-
-      if (source) {
-        (source as GeoJSONSource).setData(geojson);
-
-        return;
-      }
-
-      map.addSource("driver-route", {
-        type: "geojson",
-        data: geojson,
-      });
-
-      map.addLayer({
-        id: "driver-route",
-        type: "line",
-        source: "driver-route",
-        layout: {
-          "line-join": "round",
-          "line-cap": "round",
-        },
-        paint: {
-          "line-color": "#2563eb",
-          "line-width": 5,
-          "line-opacity": 0.9,
-          "line-dasharray": [2, 1],
-        },
-      });
-    };
-
-    if (map.isStyleLoaded()) {
-      updateRoute();
-    } else {
-      map.once("load", updateRoute);
-    }
-  }, []);
+ 
   useEffect(() => {
     if (!location || pickup) {
       return;
@@ -177,6 +133,7 @@ export default function MainLayout() {
 
     map.on("load", () => {
       console.log("MAP LOADED");
+      setMapReady(true);
     });
 
     map.on("error", (event) => {
@@ -186,6 +143,7 @@ export default function MainLayout() {
     mapRef.current = map;
 
     return () => {
+      setMapReady(false);
       pickupMarker.current?.remove();
       destinationMarker.current?.remove();
       driverMarker.current?.remove();
@@ -199,7 +157,6 @@ export default function MainLayout() {
       }
 
       map.remove();
-
       mapRef.current = null;
       pickupMarker.current = null;
       destinationMarker.current = null;
@@ -228,7 +185,9 @@ export default function MainLayout() {
           border:4px solid white;
           box-shadow:0 3px 12px rgba(0,0,0,0.25);
         "
-      ></div>
+      >
+      P  
+      </div>
     `;
 
     pickupMarker.current = new Marker({
@@ -236,7 +195,7 @@ export default function MainLayout() {
     })
       .setLngLat([pickup.longitude, pickup.latitude])
       .addTo(map);
-  }, [pickup]);
+  }, [pickup,mapReady]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -279,7 +238,7 @@ export default function MainLayout() {
     })
       .setLngLat([destination.longitude, destination.latitude])
       .addTo(map);
-  }, [destination]);
+  }, [destination,mapReady]);
 
   useEffect(() => {
     if (!mapRef.current || !pickup) {
@@ -472,7 +431,7 @@ export default function MainLayout() {
     }
 
     driverMarker.current.setLngLat(position);
-  }, [driverLocation]);
+  }, [driverLocation,mapReady]);
   useEffect(() => {
     if (!pickup || !destination) {
       if (mapRef.current) {
@@ -537,90 +496,68 @@ export default function MainLayout() {
     return () => {
       cancelled = true;
     };
-  }, [pickup, destination, drawRoute]);
+  }, [pickup, destination, drawRoute,mapReady]);
 
   const handleRequestRide = () => {
-  if (!pickup || !destination || !passengerId) {
-    return;
-  }
+    if (!pickup || !destination || !passengerId) {
+      return;
+    }
 
-  console.log("REQUEST RIDE CLICKED");
+    console.log("REQUEST RIDE CLICKED");
 
-  setRideSearchError(null);
+    setRideSearchError(null);
 
-  createRide.mutate(
-    {
-      pickup: {
-        latitude: pickup.latitude,
-        longitude: pickup.longitude,
-        address: pickup.address,
+    createRide.mutate(
+      {
+        pickup: {
+          latitude: pickup.latitude,
+          longitude: pickup.longitude,
+          address: pickup.address,
+        },
+
+        destination: {
+          latitude: destination.latitude,
+          longitude: destination.longitude,
+          address: destination.address,
+        },
+
+        vehicle_type: vehicle,
+
+        passengerID: Number(passengerId),
       },
+      {
+        onSuccess: (response) => {
+          console.log("CREATE RIDE RESPONSE:", response);
 
-      destination: {
-        latitude: destination.latitude,
-        longitude: destination.longitude,
-        address: destination.address,
+          const ride = response?.data?.ride;
+
+          if (!ride) {
+            console.error("Ride missing in response:", response);
+
+            return;
+          }
+
+          console.log("RIDE CREATED:", ride);
+
+          setRide(ride.id, ride.status as any);
+
+          setRemainingSeconds(SEARCH_DURATION);
+
+          setSearchStartedAt(Date.now());
+
+          setIsSearchingDriver(true);
+        },
+
+        onError: (error) => {
+          console.error("CREATE RIDE FAILED:", error);
+
+          setIsSearchingDriver(false);
+          setSearchStartedAt(null);
+          setRemainingSeconds(SEARCH_DURATION);
+        },
       },
-
-      vehicle_type: vehicle,
-
-      passengerID: Number(passengerId),
-    },
-    {
-      onSuccess: (response) => {
-        console.log(
-          "CREATE RIDE RESPONSE:",
-          response,
-        );
-
-        const ride =
-          response?.data?.ride;
-
-        if (!ride) {
-          console.error(
-            "Ride missing in response:",
-            response,
-          );
-
-          return;
-        }
-
-        console.log(
-          "RIDE CREATED:",
-          ride,
-        );
-
-        setRide(
-          ride.id,
-          ride.status as any,
-        );
-
-        setRemainingSeconds(
-          SEARCH_DURATION,
-        );
-
-        setSearchStartedAt(
-          Date.now(),
-        );
-
-        setIsSearchingDriver(true);
-      },
-
-      onError: (error) => {
-        console.error(
-          "CREATE RIDE FAILED:",
-          error,
-        );
-
-        setIsSearchingDriver(false);
-        setSearchStartedAt(null);
-        setRemainingSeconds(
-          SEARCH_DURATION,
-        );
-      },
-    },
-  );
-};
+    );
+  };
 
   const handleCancelSearch = () => {
     if (!rideID) {
@@ -640,6 +577,7 @@ export default function MainLayout() {
           setRideSearchError(null);
 
           useRideTrackingStore.getState().clearRideTracking();
+          clearRide();
         },
         onError: (error) => {
           console.error("Failed to cancel ride:", error);
@@ -652,15 +590,17 @@ export default function MainLayout() {
     if (!rideID) {
       return;
     }
-
+    console.log(rideID)
     cancelRide.mutate(
       {
         rideId: rideID,
         cancelledBy: "PASSENGER",
+        // driverId:
       },
       {
         onSuccess: () => {
           useRideTrackingStore.getState().clearRideTracking();
+          clearRide();
         },
         onError: (error) => {
           console.error("Failed to cancel ride:", error);
@@ -680,8 +620,52 @@ export default function MainLayout() {
       longitude: location.longitude,
     });
   };
-
   useEffect(() => {
+    const ride = activeRideResponse?.data?.ride;
+
+    if (!ride) {
+      return;
+    }
+
+    setRide(ride.id, ride.status as any);
+
+    setPickup({
+      id: "pickup",
+      address: ride.pickup.address ?? "Pickup",
+      latitude: ride.pickup.latitude,
+      longitude: ride.pickup.longitude,
+    });
+
+    setDestination({
+      id: "destination",
+      address: ride.destination.address ?? "Destination",
+      latitude: ride.destination.latitude,
+      longitude: ride.destination.longitude,
+    });
+
+    if (ride.driver_id) {
+      useRideTrackingStore.getState().setAssignedDriver({
+        id: ride.driver_id,
+        name: "Driver",
+      });
+    }
+
+    useRideTrackingStore.getState().setActiveRide({
+      id: ride.id,
+      passengerId: ride.passenger_id,
+      driverId: ride.driver_id,
+      status: ride.status,
+      pickupLatitude: ride.pickup.latitude,
+      pickupLongitude: ride.pickup.longitude,
+      dropoffLatitude: ride.destination.latitude,
+      dropoffLongitude: ride.destination.longitude,
+    });
+  }, [activeRideResponse, setRide]);
+  useEffect(() => {
+    if (!passengerId) {
+      return;
+    }
+
     connectPassengerSocket(Number(passengerId), (message) => {
       if (message.type === "RIDE_ASSIGNED") {
         setIsSearchingDriver(false);
@@ -709,12 +693,39 @@ export default function MainLayout() {
 
         setRideSearchError("No driver found. Please try again.");
       }
+      if (message.type === "RIDE_CANCELLED") {
+        const cancelledRide = message.data as {
+          ride_id: number;
+          cancelled_by: "PASSENGER" | "DRIVER";
+        };
+
+        if (cancelledRide.ride_id !== useRideStore.getState().rideId) {
+          return;
+        }
+
+        setIsSearchingDriver(false);
+        setSearchStartedAt(null);
+        setRemainingSeconds(SEARCH_DURATION);
+        setRideSearchError(null);
+        useRideTrackingStore.getState().clearRideTracking();
+        clearRide();
+        driverMarker.current?.remove();
+        driverMarker.current = null;
+
+        if (mapRef.current) {
+          removeDriverRoute(mapRef.current);
+        }
+
+        if (cancelledRide.cancelled_by === "DRIVER") {
+          setRideCancellationNotice(true);
+        }
+      }
     });
 
     return () => {
       disconnectPassengerSocket();
     };
-  }, [passengerId, setAssignedDriver, setDriverLocation]);
+  }, [passengerId, setAssignedDriver, setDriverLocation, clearRide]);
 
   if (loading) {
     return (
@@ -797,6 +808,25 @@ export default function MainLayout() {
           <button
             type="button"
             onClick={() => setRideSearchError(null)}
+            className="mt-5 w-full rounded-xl bg-slate-950 py-3 font-semibold text-white"
+          >
+            Try Again
+          </button>
+        </section>
+      )}
+      {rideCancellationNotice && (
+        <section className="absolute bottom-5 left-5 right-5 z-50 mx-auto max-w-md rounded-3xl bg-white p-6 text-center shadow-2xl">
+          <h2 className="text-lg font-bold text-slate-950">
+            Driver did not accept the ride
+          </h2>
+
+          <p className="mt-2 text-sm text-slate-500">
+            The driver cancelled the request. Please try again.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => setRideCancellationNotice(false)}
             className="mt-5 w-full rounded-xl bg-slate-950 py-3 font-semibold text-white"
           >
             Try Again
@@ -1261,5 +1291,15 @@ function removeRoute(map: MapLibreMap) {
 
   if (map.getSource("ride-route")) {
     map.removeSource("ride-route");
+  }
+}
+
+function removeDriverRoute(map: MapLibreMap) {
+  if (map.getLayer("driver-route")) {
+    map.removeLayer("driver-route");
+  }
+
+  if (map.getSource("driver-route")) {
+    map.removeSource("driver-route");
   }
 }

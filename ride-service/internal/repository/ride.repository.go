@@ -68,6 +68,14 @@ type Repository interface {
 		tx *gorm.DB,
 		ride *models.Ride,
 	) (*models.Ride, error)
+	GetActiveRideByPassengerID(
+		ctx context.Context,
+		passengerID uint64,
+	) (*models.Ride, error)
+	GetActiveRideByDriverID(
+		ctx context.Context,
+		driverID uint64,
+	) (*models.Ride, error)
 }
 
 type repositoryImpl struct {
@@ -235,4 +243,62 @@ func (r repositoryImpl) UpdateRideTx(
 	}
 
 	return ride, nil
+}
+
+func (r *repositoryImpl) GetActiveRideByPassengerID(
+	ctx context.Context,
+	passengerID uint64,
+) (*models.Ride, error) {
+
+	var ride models.Ride
+
+	err := r.db.WithContext(ctx).
+		Where(
+			"passenger_id = ? AND status IN ?",
+			passengerID,
+			[]string{
+				"SEARCHING_DRIVER",
+				"DRIVER_ASSIGNED",
+				"DRIVER_ARRIVING",
+				"DRIVER_ARRIVED",
+				"TRIP_STARTED",
+			},
+		).
+		First(&ride).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &ride, nil
+}
+
+
+func (r *repositoryImpl) GetActiveRideByDriverID(
+	ctx context.Context,
+	driverID uint64,
+) (*models.Ride, error) {
+
+	var ride models.Ride
+
+	err := r.db.WithContext(ctx).
+		Where(
+			"driver_id = ? AND status IN ?",
+			driverID,
+			[]string{
+				"DRIVER_ASSIGNED",
+				"DRIVER_ARRIVING",
+				"DRIVER_ARRIVED",
+				"TRIP_STARTED",
+			},
+		).
+		First(&ride).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &ride, nil
 }

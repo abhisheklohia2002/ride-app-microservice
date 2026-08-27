@@ -21,17 +21,20 @@ type MatchingService struct {
 	driverLocationRepo *repository.DriverLocationRepository
 	publisher          *rabbitmq.Publisher
 	pendingRideStore   *PendingRideStore
+	offerStore         *RideOfferStore
 }
 
 func NewMatchingService(
 	driverLocationRepo *repository.DriverLocationRepository,
 	publisher *rabbitmq.Publisher,
 	pendingRideStore *PendingRideStore,
+	offerStore *RideOfferStore,
 ) *MatchingService {
 	return &MatchingService{
 		driverLocationRepo: driverLocationRepo,
 		publisher:          publisher,
 		pendingRideStore:   pendingRideStore,
+		offerStore:         offerStore,
 	}
 }
 
@@ -185,6 +188,8 @@ func (s *MatchingService) TryMatchPendingRide(
 		return err
 	}
 
+	s.offerStore.Set(ride.RideID, driverID)
+
 	s.pendingRideStore.Remove(
 		ride.RideID,
 	)
@@ -196,6 +201,26 @@ func (s *MatchingService) TryMatchPendingRide(
 	)
 
 	return nil
+}
+
+func (s *MatchingService) OfferedDriver(rideID int64) (uint64, bool) {
+	return s.offerStore.Get(rideID)
+}
+
+func (s *MatchingService) RemoveOfferedRide(rideID int64) {
+	s.offerStore.Remove(rideID)
+}
+
+func (s *MatchingService) PublishCancellationForDriver(
+	ctx context.Context,
+	event events.RideCancelledEvent,
+) error {
+	return s.publisher.Publish(
+		ctx,
+		rabbitmq.RideExchange,
+		"RIDE_CANCELLED_DRIVER",
+		event,
+	)
 }
 
 func (s *MatchingService) RetryPendingRides(

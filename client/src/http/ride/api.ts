@@ -33,13 +33,28 @@ export const acceptRide = async (
 export const cancelRide = async (
   rideId: number,
   cancelledBy: "PASSENGER" | "DRIVER",
+  driverId?: number,
 ) => {
   const { data } = await api.post(
     `/api/rides/${rideId}/cancel`,
     {
       cancelledBy,
+      ...(driverId ? { driverId } : {}),
     },
   );
 
   return data;
 };
+
+
+export const getActivePassengerRide = async (
+  passengerId: number,
+) => {
+  const { data } = await api.get(
+    `/api/rides/passenger/${passengerId}/active`,
+  );
+
+  return data;
+};
+
+

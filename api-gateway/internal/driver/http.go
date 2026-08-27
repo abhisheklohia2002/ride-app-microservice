@@ -38,7 +38,7 @@ func HandleCreateDriver(w http.ResponseWriter, r *http.Request) {
 			Fullname: req.FullName,
 			Email:    req.Email,
 			Phone:    req.Phone,
-			Password: req.FullName,
+			Password: req.Password,
 			Role:     req.Role,
 		},
 	)

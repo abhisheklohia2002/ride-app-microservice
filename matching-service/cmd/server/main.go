@@ -61,6 +61,7 @@ func main() {
 	defer redisClient.Close()
 	pendingRideStore :=
 		services.NewPendingRideStore()
+	offerStore := services.NewRideOfferStore()
 
 	driverLocationRepo := repository.NewDriverLocationRepository(
 		redisClient.RDB,
@@ -83,6 +84,7 @@ func main() {
 		driverLocationRepo,
 		rabbitPublisher,
 		pendingRideStore,
+		offerStore,
 	)
 
 	passengerHub := matchingWebSocket.NewHub()

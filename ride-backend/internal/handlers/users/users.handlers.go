@@ -56,7 +56,11 @@ func (h *UserHandlerImpl) Register(
 	}, nil
 }
 
-func (h *UserHandlerImpl) Login(ctx context.Context, req *pb.LoginUserRequest) (*pb.UserResponse, error) {
+func (h *UserHandlerImpl) Login(
+	ctx context.Context,
+	req *pb.LoginUserRequest,
+) (*pb.UserResponse, error) {
+
 
 	createReq := dto.LoginRequest{
 		Email:    req.Email,
@@ -64,9 +68,12 @@ func (h *UserHandlerImpl) Login(ctx context.Context, req *pb.LoginUserRequest) (
 	}
 
 	res, err := h.service.Login(ctx, createReq)
-
 	if err != nil {
-		return nil, err
+		log.Printf("LOGIN SERVICE ERROR: %v", err)
+		return nil, status.Error(
+			codes.Unauthenticated,
+			"invalid email or password",
+		)
 	}
 
 	return &pb.UserResponse{

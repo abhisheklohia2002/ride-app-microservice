@@ -59,6 +59,14 @@ func (c *RideConsumer) Start(
 		return err
 	}
 
+	if err := c.rabbitConsumer.Bind(
+		queueName,
+		rabbitmq.RideExchange,
+		"RIDE_CANCELLED",
+	); err != nil {
+		return err
+	}
+
 	log.Println("ride consumer started")
 
 	go func() {
@@ -117,6 +125,9 @@ func (c *RideConsumer) handleMessage(
 		return c.handleRideAssigned(
 			message,
 		)
+
+	case "RIDE_CANCELLED":
+		return c.handleRideCancelled(ctx, message)
 
 	default:
 		log.Printf(
@@ -207,6 +218,7 @@ func (c *RideConsumer) handleRideAssigned(
 	c.pendingRideStore.Remove(
 		event.RideID,
 	)
+	c.matchingService.RemoveOfferedRide(event.RideID)
 
 	payload := map[string]any{
 		"type": "RIDE_ASSIGNED",
@@ -226,4 +238,37 @@ func (c *RideConsumer) handleRideAssigned(
 	)
 
 	return nil
+}
+
+func (c *RideConsumer) handleRideCancelled(
+	ctx context.Context,
+	message amqp091.Delivery,
+) error {
+	var event events.RideCancelledEvent
+	if err := json.Unmarshal(message.Body, &event); err != nil {
+		return err
+	}
+
+	c.pendingRideStore.Remove(event.RideID)
+
+	if event.DriverID == nil {
+		if driverID, ok := c.matchingService.OfferedDriver(event.RideID); ok {
+			event.DriverID = &driverID
+		}
+	}
+	c.matchingService.RemoveOfferedRide(event.RideID)
+
+	if event.DriverID != nil {
+		c.activeRideStore.RemoveByDriver(*event.DriverID)
+		if err := c.matchingService.PublishCancellationForDriver(ctx, event); err != nil {
+			return err
+		}
+	}
+
+	payload := map[string]any{
+		"type": "RIDE_CANCELLED",
+		"data": event,
+	}
+
+	return c.passengerHub.SendToPassenger(event.PassengerID, payload)
 }

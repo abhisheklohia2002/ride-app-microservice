@@ -20,6 +20,8 @@ type RideServiceClient interface {
 	CreateRide(ctx context.Context, in *CreateRideRequest, opts ...grpc.CallOption) (*RideResponse, error)
 	AcceptRide(ctx context.Context, in *AcceptRideRequest, opts ...grpc.CallOption) (*RideResponse, error)
 	CancelRide(ctx context.Context, in *CancelRideRequest, opts ...grpc.CallOption) (*RideResponse, error)
+	GetActiveRideByPassenger(ctx context.Context, in *GetActiveRideRequest, opts ...grpc.CallOption) (*RideResponse, error)
+	GetActiveRideByDriver(ctx context.Context, in *GetActiveRideRequest, opts ...grpc.CallOption) (*RideResponse, error)
 }
 
 type rideServiceClient struct {
@@ -57,6 +59,24 @@ func (c *rideServiceClient) CancelRide(ctx context.Context, in *CancelRideReques
 	return out, nil
 }
 
+func (c *rideServiceClient) GetActiveRideByPassenger(ctx context.Context, in *GetActiveRideRequest, opts ...grpc.CallOption) (*RideResponse, error) {
+	out := new(RideResponse)
+	err := c.cc.Invoke(ctx, "/rideService.RideService/GetActiveRideByPassenger", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *rideServiceClient) GetActiveRideByDriver(ctx context.Context, in *GetActiveRideRequest, opts ...grpc.CallOption) (*RideResponse, error) {
+	out := new(RideResponse)
+	err := c.cc.Invoke(ctx, "/rideService.RideService/GetActiveRideByDriver", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RideServiceServer is the server API for RideService service.
 // All implementations must embed UnimplementedRideServiceServer
 // for forward compatibility
@@ -64,6 +84,8 @@ type RideServiceServer interface {
 	CreateRide(context.Context, *CreateRideRequest) (*RideResponse, error)
 	AcceptRide(context.Context, *AcceptRideRequest) (*RideResponse, error)
 	CancelRide(context.Context, *CancelRideRequest) (*RideResponse, error)
+	GetActiveRideByPassenger(context.Context, *GetActiveRideRequest) (*RideResponse, error)
+	GetActiveRideByDriver(context.Context, *GetActiveRideRequest) (*RideResponse, error)
 	mustEmbedUnimplementedRideServiceServer()
 }
 
@@ -79,6 +101,12 @@ func (UnimplementedRideServiceServer) AcceptRide(context.Context, *AcceptRideReq
 }
 func (UnimplementedRideServiceServer) CancelRide(context.Context, *CancelRideRequest) (*RideResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CancelRide not implemented")
+}
+func (UnimplementedRideServiceServer) GetActiveRideByPassenger(context.Context, *GetActiveRideRequest) (*RideResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetActiveRideByPassenger not implemented")
+}
+func (UnimplementedRideServiceServer) GetActiveRideByDriver(context.Context, *GetActiveRideRequest) (*RideResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetActiveRideByDriver not implemented")
 }
 func (UnimplementedRideServiceServer) mustEmbedUnimplementedRideServiceServer() {}
 
@@ -147,6 +175,42 @@ func _RideService_CancelRide_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RideService_GetActiveRideByPassenger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetActiveRideRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RideServiceServer).GetActiveRideByPassenger(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rideService.RideService/GetActiveRideByPassenger",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RideServiceServer).GetActiveRideByPassenger(ctx, req.(*GetActiveRideRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RideService_GetActiveRideByDriver_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetActiveRideRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RideServiceServer).GetActiveRideByDriver(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rideService.RideService/GetActiveRideByDriver",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RideServiceServer).GetActiveRideByDriver(ctx, req.(*GetActiveRideRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _RideService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "rideService.RideService",
 	HandlerType: (*RideServiceServer)(nil),
@@ -162,6 +226,14 @@ var _RideService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CancelRide",
 			Handler:    _RideService_CancelRide_Handler,
+		},
+		{
+			MethodName: "GetActiveRideByPassenger",
+			Handler:    _RideService_GetActiveRideByPassenger_Handler,
+		},
+		{
+			MethodName: "GetActiveRideByDriver",
+			Handler:    _RideService_GetActiveRideByDriver_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

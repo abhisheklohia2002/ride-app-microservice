@@ -8,6 +8,8 @@ import (
 	pb "github.com/ride-app/shared/pkg/ride"
 	"github.com/ride-service/internal/handlers/dto"
 	"github.com/ride-service/internal/services"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type RideHandlerImpl struct {
@@ -195,10 +197,167 @@ func (h *RideHandlerImpl) CancelRide(
 		dto.CancelRideRequest{
 			RideID:      req.RideId,
 			CancelledBy: req.CancelledBy,
+			DriverID:    req.DriverId,
 		},
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	response := &pb.RideResponse{
+		Ride: &pb.Ride{
+			Id:                int64(ride.ID),
+			PassengerId:       int64(ride.PassengerID),
+			Status:            ride.Status,
+			EstimatedDistance: ride.EstimatedDistance,
+			EstimatedDuration: int32(ride.EstimatedDuration),
+
+			Pickup: &pb.Location{
+				Latitude:  ride.PickupLatitude,
+				Longitude: ride.PickupLongitude,
+			},
+
+			Destination: &pb.Location{
+				Latitude:  ride.DropoffLatitude,
+				Longitude: ride.DropoffLongitude,
+			},
+
+			RequestedAt: ride.RequestedAt.Format(time.RFC3339),
+			CreatedAt:   ride.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:   ride.UpdatedAt.Format(time.RFC3339),
+		},
+	}
+
+	if ride.DriverID != nil {
+		driverID := int64(*ride.DriverID)
+
+		response.Ride.DriverId = &driverID
+	}
+
+	if ride.DriverAssignedAt != nil {
+		response.Ride.DriverAssignedAt =
+			ride.DriverAssignedAt.Format(time.RFC3339)
+	}
+
+	if ride.DriverArrivedAt != nil {
+		response.Ride.DriverArrivedAt =
+			ride.DriverArrivedAt.Format(time.RFC3339)
+	}
+
+	if ride.StartedAt != nil {
+		response.Ride.StartedAt =
+			ride.StartedAt.Format(time.RFC3339)
+	}
+
+	if ride.CompletedAt != nil {
+		response.Ride.CompletedAt =
+			ride.CompletedAt.Format(time.RFC3339)
+	}
+
+	if ride.CancelledAt != nil {
+		response.Ride.CancelledAt =
+			ride.CancelledAt.Format(time.RFC3339)
+	}
+
+	return response, nil
+}
+
+func (h *RideHandlerImpl) GetActiveRideByPassenger(
+	ctx context.Context,
+	req *pb.GetActiveRideRequest,
+) (*pb.RideResponse, error) {
+
+	ride, err := h.svc.GetActiveRideByPassengerID(
+		ctx,
+		req.UserId,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if ride == nil {
+		return nil, status.Error(
+			codes.NotFound,
+			"no active ride",
+		)
+	}
+
+	response := &pb.RideResponse{
+		Ride: &pb.Ride{
+			Id:                int64(ride.ID),
+			PassengerId:       int64(ride.PassengerID),
+			Status:            ride.Status,
+			EstimatedDistance: ride.EstimatedDistance,
+			EstimatedDuration: int32(ride.EstimatedDuration),
+
+			Pickup: &pb.Location{
+				Latitude:  ride.PickupLatitude,
+				Longitude: ride.PickupLongitude,
+			},
+
+			Destination: &pb.Location{
+				Latitude:  ride.DropoffLatitude,
+				Longitude: ride.DropoffLongitude,
+			},
+
+			RequestedAt: ride.RequestedAt.Format(time.RFC3339),
+			CreatedAt:   ride.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:   ride.UpdatedAt.Format(time.RFC3339),
+		},
+	}
+
+	if ride.DriverID != nil {
+		driverID := int64(*ride.DriverID)
+
+		response.Ride.DriverId = &driverID
+	}
+
+	if ride.DriverAssignedAt != nil {
+		response.Ride.DriverAssignedAt =
+			ride.DriverAssignedAt.Format(time.RFC3339)
+	}
+
+	if ride.DriverArrivedAt != nil {
+		response.Ride.DriverArrivedAt =
+			ride.DriverArrivedAt.Format(time.RFC3339)
+	}
+
+	if ride.StartedAt != nil {
+		response.Ride.StartedAt =
+			ride.StartedAt.Format(time.RFC3339)
+	}
+
+	if ride.CompletedAt != nil {
+		response.Ride.CompletedAt =
+			ride.CompletedAt.Format(time.RFC3339)
+	}
+
+	if ride.CancelledAt != nil {
+		response.Ride.CancelledAt =
+			ride.CancelledAt.Format(time.RFC3339)
+	}
+
+	return response, nil
+}
+
+func (h *RideHandlerImpl) GetActiveRideByDriver(
+	ctx context.Context,
+	req *pb.GetActiveRideRequest,
+) (*pb.RideResponse, error) {
+
+	ride, err := h.svc.GetActiveRideByDriverID(
+		ctx,
+		req.UserId,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if ride == nil {
+		return nil, status.Error(
+			codes.NotFound,
+			"no active ride",
+		)
 	}
 
 	response := &pb.RideResponse{

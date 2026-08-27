@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"time"
 
 	"github.com/ride-service/internal/clinets/matching"
@@ -33,6 +34,14 @@ type Service interface {
 	CancelRide(
 		ctx context.Context,
 		req dto.CancelRideRequest,
+	) (*models.Ride, error)
+	GetActiveRideByPassengerID(
+		ctx context.Context,
+		passengerID uint64,
+	) (*models.Ride, error)
+	GetActiveRideByDriverID(
+		ctx context.Context,
+		driverID uint64,
 	) (*models.Ride, error)
 }
 
@@ -367,6 +376,12 @@ func (s serviceImpl) CancelRide(
 	if req.CancelledBy == "" {
 		return nil, errors.New("cancelled by is required")
 	}
+	if req.CancelledBy != "PASSENGER" && req.CancelledBy != "DRIVER" {
+		return nil, errors.New("invalid cancellation actor")
+	}
+	if req.CancelledBy == "DRIVER" && req.DriverID == nil {
+		return nil, errors.New("driver id is required for driver cancellation")
+	}
 
 	var ride *models.Ride
 
@@ -389,14 +404,11 @@ func (s serviceImpl) CancelRide(
 				return errors.New("ride not found")
 			}
 
-			switch ride.Status {
-			case string(enums.RideStatusRequested),
-				string(enums.RideStatusSearchingDriver),
-				string(enums.RideStatusDriverAssigned),
-				string(enums.RideStatusDriverArriving),
-				string(enums.RideStatusDriverArrived):
-
-			default:
+			if !enums.IsValidRideTransition(
+				enums.RideStatus(ride.Status),
+				enums.RideStatusCancelled,
+			) {
+				log.Println("enums.RideStatus(ride.Status)", enums.RideStatus(ride.Status))
 				return errors.New(
 					"ride cannot be cancelled in current status",
 				)
@@ -407,6 +419,8 @@ func (s serviceImpl) CancelRide(
 			ride.Status = string(
 				enums.RideStatusCancelled,
 			)
+			now := time.Now()
+			ride.CancelledAt = &now
 
 			updatedRide, err :=
 				s.repo.UpdateRideTx(
@@ -440,6 +454,12 @@ func (s serviceImpl) CancelRide(
 				PassengerID: updatedRide.PassengerID,
 				DriverID:    updatedRide.DriverID,
 				CancelledBy: req.CancelledBy,
+			}
+
+			// A driver can decline a request before accepting it, so the ride
+			// has no assigned driver yet. Preserve that recipient in the event.
+			if event.DriverID == nil && req.DriverID != nil {
+				event.DriverID = req.DriverID
 			}
 
 			payload, err := json.Marshal(event)
@@ -476,4 +496,34 @@ func (s serviceImpl) CancelRide(
 	}
 
 	return ride, nil
+}
+
+func (s serviceImpl) GetActiveRideByPassengerID(
+	ctx context.Context,
+	passengerID uint64,
+) (*models.Ride, error) {
+
+	if passengerID == 0 {
+		return nil, errors.New("passenger id is required")
+	}
+
+	return s.repo.GetActiveRideByPassengerID(
+		ctx,
+		passengerID,
+	)
+}
+
+func (s serviceImpl) GetActiveRideByDriverID(
+	ctx context.Context,
+	driverID uint64,
+) (*models.Ride, error) {
+
+	if driverID == 0 {
+		return nil, errors.New("driver id is required")
+	}
+
+	return s.repo.GetActiveRideByDriverID(
+		ctx,
+		driverID,
+	)
 }

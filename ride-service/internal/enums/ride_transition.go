@@ -9,23 +9,20 @@ func IsValidRideTransition(
 
 	case RideStatusRequested:
 		return to == RideStatusSearchingDriver ||
-			to == RideStatusCancelled  
+			to == RideStatusCancelled
 
 	case RideStatusSearchingDriver:
 		return to == RideStatusDriverAssigned ||
 			to == RideStatusCancelled
 
 	case RideStatusDriverAssigned:
-		return to == RideStatusDriverAccepted ||
-			to == RideStatusCancelled
+		return to == RideStatusDriverAccepted
 
 	case RideStatusDriverAccepted:
-		return to == RideStatusDriverArriving ||
-			to == RideStatusCancelled
+		return to == RideStatusDriverArriving
 
 	case RideStatusDriverArriving:
-		return to == RideStatusDriverArrived ||
-			to == RideStatusCancelled
+		return to == RideStatusDriverArrived
 
 	case RideStatusDriverArrived:
 		return to == RideStatusTripStarted
