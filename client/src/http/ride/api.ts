@@ -58,3 +58,14 @@ export const getActivePassengerRide = async (
 };
 
 
+
+
+export const completeRide = async (
+  rideId: number,
+) => {
+  const { data } = await api.post(
+    `/api/rides/${rideId}/complete`,
+  );
+
+  return data;
+};

@@ -1,6 +1,7 @@
+import { useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import type { CreateRideRequest } from '../dto';
-import { acceptRide, cancelRide, createRide, getActivePassengerRide } from './../api';
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { acceptRide, cancelRide, completeRide, createRide, getActivePassengerRide } from './../api';
 
 
 
@@ -51,8 +52,30 @@ export const useActivePassengerRide = (
       "active-passenger-ride",
       passengerId,
     ],
-    queryFn: () =>
-      getActivePassengerRide(passengerId!),
+    queryFn: async () => {
+      try {
+        return await getActivePassengerRide(
+          passengerId!,
+        );
+      } catch (error: any) {
+        if (
+          error?.response?.status === 404
+        ) {
+          return null;
+        }
+
+        throw error;
+      }
+    },
     enabled: !!passengerId,
+    retry: false,
+  });
+};
+
+
+export const useCompleteRide = () => {
+  return useMutation({
+    mutationFn: (rideId: number) =>
+      completeRide(rideId),
   });
 };

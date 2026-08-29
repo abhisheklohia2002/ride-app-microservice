@@ -342,3 +342,52 @@ func GetActiveDriverRide(
 		},
 	)
 }
+
+func CompleteRide(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	rideIDString := r.PathValue("rideId")
+
+	rideID, err := strconv.ParseInt(
+		rideIDString,
+		10,
+		64,
+	)
+	if err != nil {
+		http.Error(
+			w,
+			"invalid ride id",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	res, err :=
+		grpcRideClient.RideClient.CompleteRide(
+			r.Context(),
+			&pb.CompleteRideRequest{
+				RideId: rideID,
+			},
+		)
+
+	if err != nil {
+		http.Error(
+			w,
+			err.Error(),
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	w.Header().Set(
+		"Content-Type",
+		"application/json",
+	)
+
+	_ = json.NewEncoder(w).Encode(
+		map[string]any{
+			"data": res,
+		},
+	)
+}

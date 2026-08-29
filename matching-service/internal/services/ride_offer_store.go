@@ -2,8 +2,6 @@ package services
 
 import "sync"
 
-// RideOfferStore records the driver selected for a request before that driver
-// accepts it and becomes the ride's persisted driver.
 type RideOfferStore struct {
 	mu   sync.RWMutex
 	data map[int64]uint64

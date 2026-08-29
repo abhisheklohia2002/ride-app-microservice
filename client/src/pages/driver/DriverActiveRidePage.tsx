@@ -17,6 +17,8 @@ import {
   type DriverLocation,
 } from "../../http/driver/hooks/use-driver-location";
 import ProfileMenu from "../../components/ProfileMenu";
+import { useCompleteRide } from "../../http/ride/hooks/use-rides";
+import { useDriverRideStore } from "../../stores/driver/driver-ride.store";
 
 interface ActiveRide {
   id: number;
@@ -36,6 +38,7 @@ export default function DriverActiveRidePage({ ride }: Props) {
   );
 
   const [mapReady, setMapReady] = useState(false);
+  const rideRequest = useDriverRideStore((state) => state.rideRequest);
 
   const mapContainer = useRef<HTMLDivElement | null>(null);
 
@@ -50,7 +53,7 @@ export default function DriverActiveRidePage({ ride }: Props) {
   const MAPTILER_API_KEY = import.meta.env.VITE_MAPTILER_API_KEY;
 
   useDriverLocation({
-    enabled: true,
+    enabled: false,
 
     onLocationChange: (location) => {
       setDriverLocation(location);
@@ -331,6 +334,27 @@ export default function DriverActiveRidePage({ ride }: Props) {
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
+  const completeRideMutation = useCompleteRide();
+  const handleCompleteRide = () => {
+    console.log('-------->',rideRequest?.ride_id)
+    if (!Number(rideRequest?.ride_id)) {
+      return;
+    }
+
+    completeRideMutation.mutate(
+       Number(rideRequest?.ride_id),
+      {
+        onSuccess: () => {
+          useDriverRideStore.getState().clearActiveRide();
+        },
+
+        onError: (error: Error) => {
+          console.error("Failed to complete ride:", error);
+        },
+      },
+    );
+  };
+
   return (
     <main className="relative h-screen w-full overflow-hidden bg-slate-100">
       <div ref={mapContainer} className="absolute inset-0 h-full w-full" />
@@ -345,12 +369,12 @@ export default function DriverActiveRidePage({ ride }: Props) {
         DRIVER_ASSIGNED
       </div>
 
-       <button
-              type="button"
-              className="absolute right-5 bottom-5 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xl"
-            >
-              <ProfileMenu  />
-            </button>
+      <div
+        // type="button"
+        className="absolute right-5 bottom-5 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xl"
+      >
+        <ProfileMenu />
+      </div>
       <section className="absolute bottom-4 left-4 right-4 z-20 rounded-3xl bg-white p-5 shadow-2xl md:left-5 md:right-auto md:w-[440px]">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100">
@@ -400,6 +424,14 @@ export default function DriverActiveRidePage({ ride }: Props) {
             Navigate
           </button>
         </div>
+        <button
+          type="button"
+          onClick={handleCompleteRide}
+          disabled={completeRideMutation.isPending}
+          className="mt-3 w-full rounded-xl bg-emerald-600 py-3.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {completeRideMutation.isPending ? "Completing..." : "Complete Ride"}
+        </button>
       </section>
     </main>
   );

@@ -32,7 +32,11 @@ import {
 
 import { useCurrentLocation } from "../../http/ride/hooks/use-current-location";
 import { useAuthStore } from "../../stores/auth/auth.store";
-import { useAcceptRide, useCancelRide } from "../../http/ride/hooks/use-rides";
+import {
+  useAcceptRide,
+  useCancelRide,
+  useCompleteRide,
+} from "../../http/ride/hooks/use-rides";
 import DriverActiveRidePage from "./DriverActiveRidePage";
 import { useActiveDriverRide } from "../../http/driver/hooks/use-driver";
 import ProfileMenu from "../../components/ProfileMenu";
@@ -42,7 +46,7 @@ export default function DriverHomePage() {
   const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(
     null,
   );
-
+  const { setRideRequest } = useDriverRideStore();
   const acceptRideMutation = useAcceptRide();
   const cancelRide = useCancelRide();
   const { location } = useCurrentLocation();
@@ -228,7 +232,18 @@ export default function DriverHomePage() {
   }, [isOnline]);
   useEffect(() => {
     const ride = activeRideResponse?.data?.ride;
-
+    if (ride) {
+      setRideRequest({
+        ride_id: ride.id,
+        passenger_id: ride.passenger_id,
+        driver_id: ride.driver_id,
+        pickup_latitude: ride.pickup.latitude,
+        pickup_longitude: ride.pickup.longitude,
+        dropoff_latitude: ride.destination.latitude,
+        dropoff_longitude: ride.destination.longitude,
+        vehicle_type: "",
+      });
+    }
     if (!ride) {
       return;
     }
@@ -286,7 +301,7 @@ export default function DriverHomePage() {
         driverId: +driverId,
       },
       {
-        onSuccess: (response) => {
+        onSuccess: (response: any) => {
           useDriverRideStore.getState().setActiveRide({
             id: response.data.ride.id,
             driverId: response.data.ride.driver_id,
@@ -318,7 +333,7 @@ export default function DriverHomePage() {
         onSuccess: () => {
           useDriverRideStore.getState().clearRideRequest();
         },
-        onError: (error) => {
+        onError: (error: Error) => {
           console.error("Failed to cancel ride:", error);
         },
       },
@@ -347,12 +362,12 @@ export default function DriverHomePage() {
               <Bell size={18} />
             </button>
 
-            <button
+            {/* <button
               type="button"
               className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xl"
             >
               <User size={18} />
-            </button>
+            </button> */}
           </div>
         </header>
 
@@ -384,12 +399,12 @@ export default function DriverHomePage() {
           <Navigation size={18} />
         </button>
 
-        <button
-               type="button"
-               className="absolute right-5 bottom-5 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xl"
-             >
-               <ProfileMenu  />
-             </button>
+        <div
+          // type="button"
+          className="absolute right-5 bottom-5 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xl"
+        >
+          <ProfileMenu />
+        </div>
         <section className="absolute bottom-0 left-0 right-0 z-20 rounded-t-[30px] bg-white shadow-2xl md:bottom-5 md:left-5 md:right-auto md:w-[440px] md:rounded-[30px]">
           <div className="p-5 md:p-6">
             <div className="flex items-start justify-between">

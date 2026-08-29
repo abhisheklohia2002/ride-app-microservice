@@ -12,6 +12,7 @@ service RideService {
     rpc CreateRide(CreateRideRequest) returns (RideResponse);
     rpc AcceptRide(AcceptRideRequest) returns (RideResponse);
     rpc CancelRide(CancelRideRequest) returns (RideResponse);
+    rpc CompleteRide(CompleteRideRequest) returns (RideResponse);
     rpc GetActiveRideByPassenger(GetActiveRideRequest) returns (RideResponse);
     rpc GetActiveRideByDriver(GetActiveRideRequest) returns (RideResponse);
 
@@ -19,6 +20,10 @@ service RideService {
 
 message GetActiveRideRequest {
   uint64 user_id = 1;
+}
+
+message CompleteRideRequest {
+  int64 ride_id = 1;
 }
 
 message AcceptRideRequest {

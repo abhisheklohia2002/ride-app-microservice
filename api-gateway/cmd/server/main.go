@@ -90,11 +90,15 @@ func main() {
 	)
 
 	mux.HandleFunc(
-		"/api/rides/passenger/{passenger}/active",
+		"POST /api/rides/{rideId}/complete",
+		ride.CompleteRide,
+	)
+	mux.HandleFunc(
+		"GET /api/rides/passenger/{passenger}/active",
 		ride.GetActivePassengerRide,
 	)
 	mux.HandleFunc(
-		"/api/rides/driver/{driverId}/active",
+		"GET /api/rides/driver/{driverId}/active",
 		ride.GetActiveDriverRide,
 	)
 	handler := middleware.CorsMiddleware(mux)

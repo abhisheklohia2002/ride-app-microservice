@@ -20,6 +20,7 @@ type RideServiceClient interface {
 	CreateRide(ctx context.Context, in *CreateRideRequest, opts ...grpc.CallOption) (*RideResponse, error)
 	AcceptRide(ctx context.Context, in *AcceptRideRequest, opts ...grpc.CallOption) (*RideResponse, error)
 	CancelRide(ctx context.Context, in *CancelRideRequest, opts ...grpc.CallOption) (*RideResponse, error)
+	CompleteRide(ctx context.Context, in *CompleteRideRequest, opts ...grpc.CallOption) (*RideResponse, error)
 	GetActiveRideByPassenger(ctx context.Context, in *GetActiveRideRequest, opts ...grpc.CallOption) (*RideResponse, error)
 	GetActiveRideByDriver(ctx context.Context, in *GetActiveRideRequest, opts ...grpc.CallOption) (*RideResponse, error)
 }
@@ -59,6 +60,15 @@ func (c *rideServiceClient) CancelRide(ctx context.Context, in *CancelRideReques
 	return out, nil
 }
 
+func (c *rideServiceClient) CompleteRide(ctx context.Context, in *CompleteRideRequest, opts ...grpc.CallOption) (*RideResponse, error) {
+	out := new(RideResponse)
+	err := c.cc.Invoke(ctx, "/rideService.RideService/CompleteRide", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *rideServiceClient) GetActiveRideByPassenger(ctx context.Context, in *GetActiveRideRequest, opts ...grpc.CallOption) (*RideResponse, error) {
 	out := new(RideResponse)
 	err := c.cc.Invoke(ctx, "/rideService.RideService/GetActiveRideByPassenger", in, out, opts...)
@@ -84,6 +94,7 @@ type RideServiceServer interface {
 	CreateRide(context.Context, *CreateRideRequest) (*RideResponse, error)
 	AcceptRide(context.Context, *AcceptRideRequest) (*RideResponse, error)
 	CancelRide(context.Context, *CancelRideRequest) (*RideResponse, error)
+	CompleteRide(context.Context, *CompleteRideRequest) (*RideResponse, error)
 	GetActiveRideByPassenger(context.Context, *GetActiveRideRequest) (*RideResponse, error)
 	GetActiveRideByDriver(context.Context, *GetActiveRideRequest) (*RideResponse, error)
 	mustEmbedUnimplementedRideServiceServer()
@@ -101,6 +112,9 @@ func (UnimplementedRideServiceServer) AcceptRide(context.Context, *AcceptRideReq
 }
 func (UnimplementedRideServiceServer) CancelRide(context.Context, *CancelRideRequest) (*RideResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CancelRide not implemented")
+}
+func (UnimplementedRideServiceServer) CompleteRide(context.Context, *CompleteRideRequest) (*RideResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CompleteRide not implemented")
 }
 func (UnimplementedRideServiceServer) GetActiveRideByPassenger(context.Context, *GetActiveRideRequest) (*RideResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetActiveRideByPassenger not implemented")
@@ -175,6 +189,24 @@ func _RideService_CancelRide_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RideService_CompleteRide_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CompleteRideRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RideServiceServer).CompleteRide(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rideService.RideService/CompleteRide",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RideServiceServer).CompleteRide(ctx, req.(*CompleteRideRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _RideService_GetActiveRideByPassenger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetActiveRideRequest)
 	if err := dec(in); err != nil {
@@ -226,6 +258,10 @@ var _RideService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CancelRide",
 			Handler:    _RideService_CancelRide_Handler,
+		},
+		{
+			MethodName: "CompleteRide",
+			Handler:    _RideService_CompleteRide_Handler,
 		},
 		{
 			MethodName: "GetActiveRideByPassenger",

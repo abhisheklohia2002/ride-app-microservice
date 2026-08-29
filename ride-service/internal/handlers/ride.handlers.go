@@ -271,8 +271,12 @@ func (h *RideHandlerImpl) GetActiveRideByPassenger(
 		ctx,
 		req.UserId,
 	)
+
 	if err != nil {
-		return nil, err
+		return nil, status.Error(
+			codes.Internal,
+			err.Error(),
+		)
 	}
 
 	if ride == nil {
@@ -357,6 +361,87 @@ func (h *RideHandlerImpl) GetActiveRideByDriver(
 		return nil, status.Error(
 			codes.NotFound,
 			"no active ride",
+		)
+	}
+
+	response := &pb.RideResponse{
+		Ride: &pb.Ride{
+			Id:                int64(ride.ID),
+			PassengerId:       int64(ride.PassengerID),
+			Status:            ride.Status,
+			EstimatedDistance: ride.EstimatedDistance,
+			EstimatedDuration: int32(ride.EstimatedDuration),
+
+			Pickup: &pb.Location{
+				Latitude:  ride.PickupLatitude,
+				Longitude: ride.PickupLongitude,
+			},
+
+			Destination: &pb.Location{
+				Latitude:  ride.DropoffLatitude,
+				Longitude: ride.DropoffLongitude,
+			},
+
+			RequestedAt: ride.RequestedAt.Format(time.RFC3339),
+			CreatedAt:   ride.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:   ride.UpdatedAt.Format(time.RFC3339),
+		},
+	}
+
+	if ride.DriverID != nil {
+		driverID := int64(*ride.DriverID)
+
+		response.Ride.DriverId = &driverID
+	}
+
+	if ride.DriverAssignedAt != nil {
+		response.Ride.DriverAssignedAt =
+			ride.DriverAssignedAt.Format(time.RFC3339)
+	}
+
+	if ride.DriverArrivedAt != nil {
+		response.Ride.DriverArrivedAt =
+			ride.DriverArrivedAt.Format(time.RFC3339)
+	}
+
+	if ride.StartedAt != nil {
+		response.Ride.StartedAt =
+			ride.StartedAt.Format(time.RFC3339)
+	}
+
+	if ride.CompletedAt != nil {
+		response.Ride.CompletedAt =
+			ride.CompletedAt.Format(time.RFC3339)
+	}
+
+	if ride.CancelledAt != nil {
+		response.Ride.CancelledAt =
+			ride.CancelledAt.Format(time.RFC3339)
+	}
+
+	return response, nil
+}
+
+func (h *RideHandlerImpl) CompleteRide(
+	ctx context.Context,
+	req *pb.CompleteRideRequest,
+) (*pb.RideResponse, error) {
+
+	if req.GetRideId() == 0 {
+		return nil, status.Error(
+			codes.InvalidArgument,
+			"ride_id is required",
+		)
+	}
+
+	ride, err := h.svc.CompleteRide(
+		ctx,
+		uint64(req.GetRideId()),
+	)
+	if err != nil {
+		return nil, status.Error(
+			codes.FailedPrecondition,
+			err.Error(),
 		)
 	}
 

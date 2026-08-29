@@ -43,6 +43,10 @@ type Service interface {
 		ctx context.Context,
 		driverID uint64,
 	) (*models.Ride, error)
+	CompleteRide(
+		ctx context.Context,
+		rideID uint64,
+	) (*models.Ride, error)
 }
 
 type serviceImpl struct {
@@ -526,4 +530,60 @@ func (s serviceImpl) GetActiveRideByDriverID(
 		ctx,
 		driverID,
 	)
+}
+
+func (s serviceImpl) CompleteRide(
+	ctx context.Context,
+	rideID uint64,
+) (*models.Ride, error) {
+
+	if rideID == 0 {
+		return nil, errors.New("ride id is required")
+	}
+
+	var ride *models.Ride
+
+	err := s.repo.Transaction(
+		ctx,
+		func(tx *gorm.DB) error {
+
+			var err error
+
+			ride, err = s.repo.GetRideByID(
+				ctx,
+				tx,
+				rideID,
+			)
+			if err != nil {
+				return err
+			}
+
+			if ride == nil {
+				return errors.New("ride not found")
+			}
+
+			ride.Status = string(
+				enums.RideStatusTripCompleted,
+			)
+
+			updatedRide, err := s.repo.UpdateRideTx(
+				ctx,
+				tx,
+				ride,
+			)
+			if err != nil {
+				return err
+			}
+
+			ride = updatedRide
+
+			return nil
+		},
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return ride, nil
 }
