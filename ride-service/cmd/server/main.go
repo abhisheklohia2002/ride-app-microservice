@@ -98,23 +98,23 @@ func main() {
 		)
 	}
 
-	defer publisher.Close()
-
+	
 	repo := repository.NewRepository(database)
 	outboxWorker := workers.NewOutboxWorker(
 		repo,
 		publisher,
 	)
-
+	
 	ctx := context.Background()
-
+	
 	go outboxWorker.Start(ctx)
 	matchingClient, err := matching.NewClient("localhost:5502")
 	if err != nil {
 		log.Fatalf("failed to Matching listen: %v", err)
 	}
-	svc := services.NewRideService(repo, matchingClient)
+	svc := services.NewRideService(repo, matchingClient, *publisher)
 	handlers := handlers.NewRideHandlers(svc)
+	defer publisher.Close()
 
 	listener, err := net.Listen("tcp", ":5501")
 	if err != nil {

@@ -32,6 +32,11 @@ type UserService interface {
 		latitude float64,
 		longitude float64,
 	) error
+
+	GoOffline(
+		ctx context.Context,
+		driverID uint64,
+	) error
 }
 
 type UserServiceImpl struct {
@@ -149,7 +154,6 @@ func (s *UserServiceImpl) Login(
 		log.Printf("BCRYPT ERROR: %v", err)
 		return nil, errors.New("invalid email or password")
 	}
-
 
 	accessToken, err := s.tokenService.GenerateAccessToken(user)
 	if err != nil {
@@ -319,5 +323,34 @@ func (s *UserServiceImpl) UpdateDriverLocation(
 	return s.publisher.Publish(
 		"DRIVER_LOCATION_UPDATED",
 		payload,
+	)
+}
+
+func (s *UserServiceImpl) GoOffline(
+	ctx context.Context,
+	driverID uint64,
+) error {
+
+	if driverID == 0 {
+		return errors.New("driver id is required")
+	}
+
+	event := struct {
+		DriverID uint64 `json:"driver_id"`
+	}{
+		DriverID: driverID,
+	}
+
+	body, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+	log.Printf(
+		"DRIVER OFFLINE: publishing event driver=%d",
+		driverID,
+	)
+	return s.publisher.Publish(
+		"DRIVER_OFFLINE",
+		body,
 	)
 }

@@ -842,6 +842,102 @@ func (x *UserSelfResponse) GetRole() string {
 	return ""
 }
 
+type GoOfflineRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DriverId      uint64                 `protobuf:"varint,1,opt,name=driver_id,json=driverId,proto3" json:"driver_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GoOfflineRequest) Reset() {
+	*x = GoOfflineRequest{}
+	mi := &file_proto_driver_driver_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GoOfflineRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GoOfflineRequest) ProtoMessage() {}
+
+func (x *GoOfflineRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_driver_driver_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GoOfflineRequest.ProtoReflect.Descriptor instead.
+func (*GoOfflineRequest) Descriptor() ([]byte, []int) {
+	return file_proto_driver_driver_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GoOfflineRequest) GetDriverId() uint64 {
+	if x != nil {
+		return x.DriverId
+	}
+	return 0
+}
+
+type GoOfflineResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GoOfflineResponse) Reset() {
+	*x = GoOfflineResponse{}
+	mi := &file_proto_driver_driver_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GoOfflineResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GoOfflineResponse) ProtoMessage() {}
+
+func (x *GoOfflineResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_driver_driver_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GoOfflineResponse.ProtoReflect.Descriptor instead.
+func (*GoOfflineResponse) Descriptor() ([]byte, []int) {
+	return file_proto_driver_driver_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *GoOfflineResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *GoOfflineResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 var File_proto_driver_driver_proto protoreflect.FileDescriptor
 
 const file_proto_driver_driver_proto_rawDesc = "" +
@@ -903,14 +999,20 @@ const file_proto_driver_driver_proto_rawDesc = "" +
 	"\bfullname\x18\x02 \x01(\tR\bfullname\x12\x14\n" +
 	"\x05email\x18\x03 \x01(\tR\x05email\x12\x14\n" +
 	"\x05phone\x18\x04 \x01(\tR\x05phone\x12\x12\n" +
-	"\x04role\x18\x05 \x01(\tR\x04role2\xc3\x03\n" +
+	"\x04role\x18\x05 \x01(\tR\x04role\"/\n" +
+	"\x10GoOfflineRequest\x12\x1b\n" +
+	"\tdriver_id\x18\x01 \x01(\x04R\bdriverId\"G\n" +
+	"\x11GoOfflineResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage2\x93\x04\n" +
 	"\rDriverService\x12K\n" +
 	"\bRegister\x12\".driverService.CreateRequestDriver\x1a\x1b.driverService.UserResponse\x12E\n" +
 	"\x05Login\x12\x1f.driverService.LoginUserRequest\x1a\x1b.driverService.UserResponse\x12?\n" +
 	"\x04Self\x12\x16.google.protobuf.Empty\x1a\x1f.driverService.UserSelfResponse\x128\n" +
 	"\x06Logout\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\x12>\n" +
 	"\aRefresh\x12\x16.google.protobuf.Empty\x1a\x1b.driverService.UserResponse\x12c\n" +
-	"\x0eUpdateLocation\x12*.driverService.UpdateDriverLocationRequest\x1a%.driverService.DriverLocationResponse2\xae\x01\n" +
+	"\x0eUpdateLocation\x12*.driverService.UpdateDriverLocationRequest\x1a%.driverService.DriverLocationResponse\x12N\n" +
+	"\tGoOffline\x12\x1f.driverService.GoOfflineRequest\x1a .driverService.GoOfflineResponse2\xae\x01\n" +
 	"\x0eVehicleService\x12M\n" +
 	"\x06Create\x12#.driverService.CreateRequestVehicle\x1a\x1e.driverService.VehicleResponse\x12M\n" +
 	"\x06Update\x12#.driverService.UpdateRequestVehicle\x1a\x1e.driverService.VehicleResponseB\x15Z\x13./shared/pkg/driverb\x06proto3"
@@ -927,7 +1029,7 @@ func file_proto_driver_driver_proto_rawDescGZIP() []byte {
 	return file_proto_driver_driver_proto_rawDescData
 }
 
-var file_proto_driver_driver_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_proto_driver_driver_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_proto_driver_driver_proto_goTypes = []any{
 	(*UpdateDriverLocationRequest)(nil), // 0: driverService.UpdateDriverLocationRequest
 	(*DriverLocationResponse)(nil),      // 1: driverService.DriverLocationResponse
@@ -942,29 +1044,33 @@ var file_proto_driver_driver_proto_goTypes = []any{
 	(*LoginUserRequest)(nil),            // 10: driverService.LoginUserRequest
 	(*UserResponse)(nil),                // 11: driverService.UserResponse
 	(*UserSelfResponse)(nil),            // 12: driverService.UserSelfResponse
-	(*emptypb.Empty)(nil),               // 13: google.protobuf.Empty
+	(*GoOfflineRequest)(nil),            // 13: driverService.GoOfflineRequest
+	(*GoOfflineResponse)(nil),           // 14: driverService.GoOfflineResponse
+	(*emptypb.Empty)(nil),               // 15: google.protobuf.Empty
 }
 var file_proto_driver_driver_proto_depIdxs = []int32{
 	2,  // 0: driverService.VehicleResponse.vehicle:type_name -> driverService.Vehicle
 	7,  // 1: driverService.UserResponse.diver:type_name -> driverService.Driver
 	8,  // 2: driverService.DriverService.Register:input_type -> driverService.CreateRequestDriver
 	10, // 3: driverService.DriverService.Login:input_type -> driverService.LoginUserRequest
-	13, // 4: driverService.DriverService.Self:input_type -> google.protobuf.Empty
-	13, // 5: driverService.DriverService.Logout:input_type -> google.protobuf.Empty
-	13, // 6: driverService.DriverService.Refresh:input_type -> google.protobuf.Empty
+	15, // 4: driverService.DriverService.Self:input_type -> google.protobuf.Empty
+	15, // 5: driverService.DriverService.Logout:input_type -> google.protobuf.Empty
+	15, // 6: driverService.DriverService.Refresh:input_type -> google.protobuf.Empty
 	0,  // 7: driverService.DriverService.UpdateLocation:input_type -> driverService.UpdateDriverLocationRequest
-	3,  // 8: driverService.VehicleService.Create:input_type -> driverService.CreateRequestVehicle
-	4,  // 9: driverService.VehicleService.Update:input_type -> driverService.UpdateRequestVehicle
-	11, // 10: driverService.DriverService.Register:output_type -> driverService.UserResponse
-	11, // 11: driverService.DriverService.Login:output_type -> driverService.UserResponse
-	12, // 12: driverService.DriverService.Self:output_type -> driverService.UserSelfResponse
-	13, // 13: driverService.DriverService.Logout:output_type -> google.protobuf.Empty
-	11, // 14: driverService.DriverService.Refresh:output_type -> driverService.UserResponse
-	1,  // 15: driverService.DriverService.UpdateLocation:output_type -> driverService.DriverLocationResponse
-	6,  // 16: driverService.VehicleService.Create:output_type -> driverService.VehicleResponse
-	6,  // 17: driverService.VehicleService.Update:output_type -> driverService.VehicleResponse
-	10, // [10:18] is the sub-list for method output_type
-	2,  // [2:10] is the sub-list for method input_type
+	13, // 8: driverService.DriverService.GoOffline:input_type -> driverService.GoOfflineRequest
+	3,  // 9: driverService.VehicleService.Create:input_type -> driverService.CreateRequestVehicle
+	4,  // 10: driverService.VehicleService.Update:input_type -> driverService.UpdateRequestVehicle
+	11, // 11: driverService.DriverService.Register:output_type -> driverService.UserResponse
+	11, // 12: driverService.DriverService.Login:output_type -> driverService.UserResponse
+	12, // 13: driverService.DriverService.Self:output_type -> driverService.UserSelfResponse
+	15, // 14: driverService.DriverService.Logout:output_type -> google.protobuf.Empty
+	11, // 15: driverService.DriverService.Refresh:output_type -> driverService.UserResponse
+	1,  // 16: driverService.DriverService.UpdateLocation:output_type -> driverService.DriverLocationResponse
+	14, // 17: driverService.DriverService.GoOffline:output_type -> driverService.GoOfflineResponse
+	6,  // 18: driverService.VehicleService.Create:output_type -> driverService.VehicleResponse
+	6,  // 19: driverService.VehicleService.Update:output_type -> driverService.VehicleResponse
+	11, // [11:20] is the sub-list for method output_type
+	2,  // [2:11] is the sub-list for method input_type
 	2,  // [2:2] is the sub-list for extension type_name
 	2,  // [2:2] is the sub-list for extension extendee
 	0,  // [0:2] is the sub-list for field type_name
@@ -981,7 +1087,7 @@ func file_proto_driver_driver_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_driver_driver_proto_rawDesc), len(file_proto_driver_driver_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

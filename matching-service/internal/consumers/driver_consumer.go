@@ -42,12 +42,21 @@ func NewDriverConsumer(
 func (c *DriverConsumer) Start(
 	ctx context.Context,
 ) error {
+	queueName := "matching.driver.location"
 	messages, err := c.rabbitConsumer.Consume(
-		"matching.driver.location",
+		queueName,
 		rabbitmq.DriverExchange,
 		"DRIVER_LOCATION_UPDATED",
 	)
 	if err != nil {
+		return err
+	}
+
+	if err := c.rabbitConsumer.Bind(
+		queueName,
+		rabbitmq.DriverExchange,
+		"DRIVER_OFFLINE",
+	); err != nil {
 		return err
 	}
 
@@ -95,8 +104,35 @@ func (c *DriverConsumer) Start(
 
 	return nil
 }
-
 func (c *DriverConsumer) handleMessage(
+	ctx context.Context,
+	message amqp091.Delivery,
+) error {
+
+	switch message.RoutingKey {
+	case "DRIVER_LOCATION_UPDATED":
+		return c.handleDriverLocationUpdated(
+			ctx,
+			message,
+		)
+
+	case "DRIVER_OFFLINE":
+		return c.handleDriverOffline(
+			ctx,
+			message,
+		)
+
+	default:
+		log.Printf(
+			"unknown driver event routing key=%s",
+			message.RoutingKey,
+		)
+
+		return nil
+	}
+}
+
+func (c *DriverConsumer) handleDriverLocationUpdated(
 	ctx context.Context,
 	message amqp091.Delivery,
 ) error {
@@ -129,8 +165,7 @@ func (c *DriverConsumer) handleMessage(
 		event.Longitude,
 	)
 
-	err := c.matchingService.RetryPendingRides(ctx)
-	if err != nil {
+	if err := c.matchingService.RetryPendingRides(ctx); err != nil {
 		log.Printf(
 			"failed to retry pending rides: %v",
 			err,
@@ -166,6 +201,45 @@ func (c *DriverConsumer) handleMessage(
 	log.Printf(
 		"driver location sent to passenger=%d driver=%d",
 		activeRide.PassengerID,
+		event.DriverID,
+	)
+
+	return nil
+}
+
+func (c *DriverConsumer) handleDriverOffline(
+	ctx context.Context,
+	message amqp091.Delivery,
+) error {
+	var event struct {
+		DriverID uint64 `json:"driver_id"`
+	}
+
+	if err := json.Unmarshal(
+		message.Body,
+		&event,
+	); err != nil {
+		return err
+	}
+
+	log.Printf(
+		"DRIVER_OFFLINE RECEIVED driver=%d",
+		event.DriverID,
+	)
+
+	if event.DriverID == 0 {
+		return nil
+	}
+
+	if err := c.matchingService.RemoveDriverLocation(
+		ctx,
+		event.DriverID,
+	); err != nil {
+		return err
+	}
+
+	log.Printf(
+		"DRIVER LOCATION REMOVED FROM REDIS driver=%d",
 		event.DriverID,
 	)
 

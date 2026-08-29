@@ -27,3 +27,14 @@ export const getActiveDriverRide = async (
 
   return data;
 };
+
+
+export const driverOffline = async (
+  driverId: number,
+) => {
+  const { data } = await api.post(
+    `/api/drivers/${driverId}/offline`,
+  );
+
+  return data;
+};

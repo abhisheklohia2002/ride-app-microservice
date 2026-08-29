@@ -38,7 +38,7 @@ import {
   useCompleteRide,
 } from "../../http/ride/hooks/use-rides";
 import DriverActiveRidePage from "./DriverActiveRidePage";
-import { useActiveDriverRide } from "../../http/driver/hooks/use-driver";
+import { useActiveDriverRide, useDriverOffline } from "../../http/driver/hooks/use-driver";
 import ProfileMenu from "../../components/ProfileMenu";
 
 export default function DriverHomePage() {
@@ -46,6 +46,8 @@ export default function DriverHomePage() {
   const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(
     null,
   );
+
+  const goOfflineMutation = useDriverOffline();
   const { setRideRequest } = useDriverRideStore();
   const acceptRideMutation = useAcceptRide();
   const cancelRide = useCancelRide();
@@ -260,15 +262,7 @@ export default function DriverHomePage() {
       passengerName: ride.passenger?.name,
     });
   }, [activeRideResponse]);
-  const handleToggle = () => {
-    if (isOnline) {
-      setOffline();
 
-      return;
-    }
-
-    setOnline();
-  };
 
   const handleCurrentLocation = () => {
     if (!mapRef.current) {
@@ -339,6 +333,27 @@ export default function DriverHomePage() {
       },
     );
   };
+
+  const handleToggle = async () => {
+  if (isOnline) {
+    try {
+      await goOfflineMutation.mutateAsync(
+        Number(driverId),
+      );
+
+      setOffline();
+    } catch (error) {
+      console.error(
+        "Failed to go offline:",
+        error,
+      );
+    }
+
+    return;
+  }
+
+  setOnline();
+};
   if (activeRide) {
     return <DriverActiveRidePage ride={activeRide} />;
   }

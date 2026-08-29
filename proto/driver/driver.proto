@@ -14,14 +14,13 @@ service DriverService {
     rpc Logout(google.protobuf.Empty) returns(google.protobuf.Empty);
     rpc Refresh(google.protobuf.Empty) returns (UserResponse);
     rpc UpdateLocation(UpdateDriverLocationRequest) returns (DriverLocationResponse);
+    rpc GoOffline(GoOfflineRequest) returns (GoOfflineResponse);
+
 }
 
 service VehicleService {
     rpc Create(CreateRequestVehicle) returns (VehicleResponse);
     rpc Update(UpdateRequestVehicle) returns (VehicleResponse);
-    // rpc Delete(google.protobuf.Empty) returns(DeleteResponse);
-    // rpc GetByID(google.protobuf.Empty) returns(VehicleResponse);
-    // rpc GetAll(google.protobuf.Empty) returns(VehicleResponse);
 }
 
 message UpdateDriverLocationRequest {
@@ -105,4 +104,14 @@ message UserSelfResponse{
     string email = 3;
     string phone = 4;
     string role = 5;
+}
+
+
+message GoOfflineRequest {
+  uint64 driver_id = 1;
+}
+
+message GoOfflineResponse {
+  bool success = 1;
+  string message = 2;
 }

@@ -314,3 +314,62 @@ func UpdateLocation(
 		},
 	)
 }
+
+func GoOffline(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	driverIDString := r.PathValue("driverId")
+
+	driverID, err := strconv.ParseUint(
+		driverIDString,
+		10,
+		64,
+	)
+	if err != nil {
+		http.Error(
+			w,
+			"invalid driver id",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	if driverID == 0 {
+		http.Error(
+			w,
+			"driver id is required",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	res, err :=
+		grpcDriverClient.DriverClient.GoOffline(
+			r.Context(),
+			&pb.GoOfflineRequest{
+				DriverId: driverID,
+			},
+		)
+
+	if err != nil {
+		http.Error(
+			w,
+			err.Error(),
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	w.Header().Set(
+		"Content-Type",
+		"application/json",
+	)
+
+	_ = json.NewEncoder(w).Encode(
+		map[string]any{
+			"message": "driver is offline",
+			"data":    res,
+		},
+	)
+}

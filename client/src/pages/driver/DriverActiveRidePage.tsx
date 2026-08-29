@@ -54,7 +54,6 @@ export default function DriverActiveRidePage({ ride }: Props) {
 
   useDriverLocation({
     enabled: false,
-
     onLocationChange: (location) => {
       setDriverLocation(location);
     },

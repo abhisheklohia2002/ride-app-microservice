@@ -284,3 +284,13 @@ func (s *MatchingService) ExpirePendingRide(
 
 	return nil
 }
+
+func (s *MatchingService) RemoveDriverLocation(
+	ctx context.Context,
+	driverID uint64,
+) error {
+	return s.driverLocationRepo.RemoveDriverLocation(
+		ctx,
+		driverID,
+	)
+}

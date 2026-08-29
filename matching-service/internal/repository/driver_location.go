@@ -96,3 +96,14 @@ func (r *DriverLocationRepository) FindNearbyDrivers(
 func driverIDString(id uint64) string {
 	return fmt.Sprintf("driver:%d", id)
 }
+
+func (r *DriverLocationRepository) RemoveDriverLocation(
+	ctx context.Context,
+	driverID uint64,
+) error {
+	return r.rdb.ZRem(
+		ctx,
+		"drivers:locations",
+		fmt.Sprintf("driver:%d", driverID),
+	).Err()
+}

@@ -1,4 +1,4 @@
-import { getActiveDriverRide, updateDriverLocation } from './../api';
+import { driverOffline, getActiveDriverRide, updateDriverLocation } from './../api';
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 
@@ -21,5 +21,13 @@ export const useActiveDriverRide = (
     queryFn: () =>
       getActiveDriverRide(driverId!),
     enabled: !!driverId,
+  });
+};
+
+
+export const useDriverOffline = () => {
+  return useMutation({
+    mutationFn: (driverId: number) =>
+      driverOffline(driverId),
   });
 };

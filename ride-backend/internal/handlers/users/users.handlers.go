@@ -61,7 +61,6 @@ func (h *UserHandlerImpl) Login(
 	req *pb.LoginUserRequest,
 ) (*pb.UserResponse, error) {
 
-
 	createReq := dto.LoginRequest{
 		Email:    req.Email,
 		Password: req.Password,
@@ -219,5 +218,33 @@ func (h *UserHandlerImpl) UpdateLocation(
 
 	return &pb.DriverLocationResponse{
 		Success: true,
+	}, nil
+}
+
+func (h *UserHandlerImpl) GoOffline(
+	ctx context.Context,
+	req *pb.GoOfflineRequest,
+) (*pb.GoOfflineResponse, error) {
+
+	if req.GetDriverId() == 0 {
+		return nil, status.Error(
+			codes.InvalidArgument,
+			"driver_id is required",
+		)
+	}
+
+	if err := h.service.GoOffline(
+		ctx,
+		req.GetDriverId(),
+	); err != nil {
+		return nil, status.Error(
+			codes.Internal,
+			err.Error(),
+		)
+	}
+
+	return &pb.GoOfflineResponse{
+		Success: true,
+		Message: "driver is offline",
 	}, nil
 }

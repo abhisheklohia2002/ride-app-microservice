@@ -24,6 +24,7 @@ type DriverServiceClient interface {
 	Logout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Refresh(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UserResponse, error)
 	UpdateLocation(ctx context.Context, in *UpdateDriverLocationRequest, opts ...grpc.CallOption) (*DriverLocationResponse, error)
+	GoOffline(ctx context.Context, in *GoOfflineRequest, opts ...grpc.CallOption) (*GoOfflineResponse, error)
 }
 
 type driverServiceClient struct {
@@ -88,6 +89,15 @@ func (c *driverServiceClient) UpdateLocation(ctx context.Context, in *UpdateDriv
 	return out, nil
 }
 
+func (c *driverServiceClient) GoOffline(ctx context.Context, in *GoOfflineRequest, opts ...grpc.CallOption) (*GoOfflineResponse, error) {
+	out := new(GoOfflineResponse)
+	err := c.cc.Invoke(ctx, "/driverService.DriverService/GoOffline", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DriverServiceServer is the server API for DriverService service.
 // All implementations must embed UnimplementedDriverServiceServer
 // for forward compatibility
@@ -98,6 +108,7 @@ type DriverServiceServer interface {
 	Logout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	Refresh(context.Context, *emptypb.Empty) (*UserResponse, error)
 	UpdateLocation(context.Context, *UpdateDriverLocationRequest) (*DriverLocationResponse, error)
+	GoOffline(context.Context, *GoOfflineRequest) (*GoOfflineResponse, error)
 	mustEmbedUnimplementedDriverServiceServer()
 }
 
@@ -122,6 +133,9 @@ func (UnimplementedDriverServiceServer) Refresh(context.Context, *emptypb.Empty)
 }
 func (UnimplementedDriverServiceServer) UpdateLocation(context.Context, *UpdateDriverLocationRequest) (*DriverLocationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateLocation not implemented")
+}
+func (UnimplementedDriverServiceServer) GoOffline(context.Context, *GoOfflineRequest) (*GoOfflineResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GoOffline not implemented")
 }
 func (UnimplementedDriverServiceServer) mustEmbedUnimplementedDriverServiceServer() {}
 
@@ -244,6 +258,24 @@ func _DriverService_UpdateLocation_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DriverService_GoOffline_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GoOfflineRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DriverServiceServer).GoOffline(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/driverService.DriverService/GoOffline",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DriverServiceServer).GoOffline(ctx, req.(*GoOfflineRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _DriverService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "driverService.DriverService",
 	HandlerType: (*DriverServiceServer)(nil),
@@ -271,6 +303,10 @@ var _DriverService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateLocation",
 			Handler:    _DriverService_UpdateLocation_Handler,
+		},
+		{
+			MethodName: "GoOffline",
+			Handler:    _DriverService_GoOffline_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

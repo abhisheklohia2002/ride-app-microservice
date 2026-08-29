@@ -11,6 +11,7 @@ import (
 	"github.com/ride-service/internal/enums"
 	"github.com/ride-service/internal/events"
 	"github.com/ride-service/internal/handlers/dto"
+	"github.com/ride-service/internal/messaging/rabbitmq"
 	"github.com/ride-service/internal/models"
 	"github.com/ride-service/internal/repository"
 	"gorm.io/gorm"
@@ -52,16 +53,19 @@ type Service interface {
 type serviceImpl struct {
 	repo           repository.Repository
 	matchingClient matching.Client
+	publister      rabbitmq.Publisher
 }
 
 func NewRideService(
 	repo repository.Repository,
 	matchingClient matching.Client,
+	publister rabbitmq.Publisher,
 
 ) Service {
 	return &serviceImpl{
 		repo:           repo,
 		matchingClient: matchingClient,
+		publister:      publister,
 	}
 }
 
@@ -582,6 +586,25 @@ func (s serviceImpl) CompleteRide(
 	)
 
 	if err != nil {
+		return nil, err
+	}
+
+	// Publish completion event after DB transaction succeeds.
+	event := events.RideCompletedEvent{
+		RideID:      int64(ride.ID),
+		PassengerID: uint64(ride.PassengerID),
+		DriverID:    uint64(*ride.DriverID),
+	}
+
+	body, err := json.Marshal(event)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.publister.Publish(
+		"RIDE_COMPLETED",
+		body,
+	); err != nil {
 		return nil, err
 	}
 

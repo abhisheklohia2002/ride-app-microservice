@@ -703,6 +703,7 @@ export default function MainLayout() {
     }
 
     connectPassengerSocket(Number(passengerId), (message) => {
+      console.log(message.type,'message.type')
       if (message.type === "RIDE_ASSIGNED") {
         setIsSearchingDriver(false);
         setSearchStartedAt(null);
@@ -729,6 +730,71 @@ export default function MainLayout() {
 
         setRideSearchError("No driver found. Please try again.");
       }
+      if (message.type === "RIDE_COMPLETED") {
+  const completedRide = message.data as {
+    ride_id: number;
+    passenger_id: number;
+    driver_id: number;
+  };
+
+  const currentRideId =
+    useRideStore.getState().rideId;
+
+  if (
+    completedRide.ride_id !== currentRideId
+  ) {
+    return;
+  }
+
+  console.log(
+    "PASSENGER RIDE COMPLETED:",
+    completedRide.ride_id,
+  );
+
+  // Stop searching state
+  setIsSearchingDriver(false);
+  setSearchStartedAt(null);
+  setRemainingSeconds(SEARCH_DURATION);
+
+  // Clear messages
+  setRideSearchError(null);
+  setRideCancellationNotice(false);
+
+  // Clear ride data
+  clearRide();
+
+  // Clear locations
+  setPickup(null);
+  setDestination(null);
+
+  // Clear route information
+  setDistance(null);
+  setDuration(null);
+
+  // Clear tracking store
+  useRideTrackingStore
+    .getState()
+    .clearRideTracking();
+
+  // Remove map markers
+  pickupMarker.current?.remove();
+  pickupMarker.current = null;
+
+  destinationMarker.current?.remove();
+  destinationMarker.current = null;
+
+  driverMarker.current?.remove();
+  driverMarker.current = null;
+
+  // Remove map routes
+  if (mapRef.current) {
+    removeRoute(mapRef.current);
+    removeDriverRoute(mapRef.current);
+  }
+
+  // Clear assigned driver
+  setAssignedDriver(null);
+}
       if (message.type === "RIDE_CANCELLED") {
         const cancelledRide = message.data as {
           ride_id: number;

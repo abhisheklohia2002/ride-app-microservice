@@ -101,6 +101,11 @@ func main() {
 		"GET /api/rides/driver/{driverId}/active",
 		ride.GetActiveDriverRide,
 	)
+
+	mux.HandleFunc(
+		"POST /api/drivers/{driverId}/offline",
+		driver.GoOffline,
+	)
 	handler := middleware.CorsMiddleware(mux)
 
 	log.Println("API Gateway is running at http://localhost:8080")

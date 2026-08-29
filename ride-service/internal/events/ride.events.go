@@ -23,3 +23,9 @@ type RideCancelledEvent struct {
 	DriverID    *uint64 `json:"driver_id,omitempty"`
 	CancelledBy string  `json:"cancelled_by"`
 }
+
+type RideCompletedEvent struct {
+	RideID      int64  `json:"ride_id"`
+	PassengerID uint64 `json:"passenger_id"`
+	DriverID    uint64 `json:"driver_id"`
+}

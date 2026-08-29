@@ -128,6 +128,7 @@ func (c *RideConsumer) handleMessage(
 
 	case "RIDE_CANCELLED":
 		return c.handleRideCancelled(ctx, message)
+	
 
 	default:
 		log.Printf(

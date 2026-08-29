@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-
 	grpcRideClient "github.com/ride-api-gateway/internal/grpc/ride"
 	pb "github.com/ride-app/shared/pkg/ride"
 )
@@ -391,3 +390,5 @@ func CompleteRide(
 		},
 	)
 }
+
+
