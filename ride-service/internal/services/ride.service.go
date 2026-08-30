@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ride-service/internal/clinets/matching"
+	client "github.com/ride-service/internal/clinets/user"
 	"github.com/ride-service/internal/enums"
 	"github.com/ride-service/internal/events"
 	"github.com/ride-service/internal/handlers/dto"
@@ -55,18 +56,21 @@ type serviceImpl struct {
 	repo           repository.Repository
 	matchingClient matching.Client
 	publister      rabbitmq.Publisher
+	userClient     client.Client
 }
 
 func NewRideService(
 	repo repository.Repository,
 	matchingClient matching.Client,
 	publister rabbitmq.Publisher,
+	userClient client.Client,
 
 ) Service {
 	return &serviceImpl{
 		repo:           repo,
 		matchingClient: matchingClient,
 		publister:      publister,
+		userClient:     userClient,
 	}
 }
 
@@ -351,11 +355,30 @@ func (s serviceImpl) AcceptRide(
 		driverID,
 		assigned,
 	)
+	driver, err := s.userClient.GetUserByID(
+		ctx,
+		driverID,
+	)
+	if err != nil {
+		log.Printf(
+			"GET USER FAILED driver=%d err=%v",
+			driverID,
+			err,
+		)
+		return nil, false, err
+	}
+	log.Printf(
+		"DRIVER USER SUCCESS id=%d name=%s",
+		driver.ID,
+		driver.FullName,
+	)
+
 	// Publish RIDE_ASSIGNED here.
 	event := events.RideAssignedEvent{
 		RideID:      int64(ride.ID),
 		PassengerID: ride.PassengerID,
 		DriverID:    driverID,
+		DriverName:  driver.FullName,
 	}
 
 	body, err := json.Marshal(event)
@@ -614,8 +637,6 @@ func (s serviceImpl) CompleteRide(
 	); err != nil {
 		return nil, err
 	}
-
-	
 
 	return ride, nil
 }

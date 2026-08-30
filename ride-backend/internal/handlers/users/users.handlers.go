@@ -2,6 +2,7 @@ package users
 
 import (
 	"context"
+	"errors"
 	"log"
 	"strconv"
 
@@ -12,6 +13,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"gorm.io/gorm"
 )
 
 type UserHandlerImpl struct {
@@ -246,5 +248,44 @@ func (h *UserHandlerImpl) GoOffline(
 	return &pb.GoOfflineResponse{
 		Success: true,
 		Message: "driver is offline",
+	}, nil
+}
+
+func (h *UserHandlerImpl) GetUserByID(
+	ctx context.Context,
+	req *pb.GetUserByIDRequest,
+) (*pb.GetUserByIDResponse, error) {
+
+	if req.GetUserId() == 0 {
+		return nil, status.Error(
+			codes.InvalidArgument,
+			"user id is required",
+		)
+	}
+
+	user, err := h.service.GetUserByID(
+		ctx,
+		req.GetUserId(),
+	)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, status.Error(
+				codes.NotFound,
+				"user not found",
+			)
+		}
+
+		return nil, status.Error(
+			codes.Internal,
+			err.Error(),
+		)
+	}
+
+	return &pb.GetUserByIDResponse{
+		Id:       uint64(user.ID),
+		FullName: user.FullName,
+		Email:    user.Email,
+		Phone:    user.Phone,
+		Role:     user.Role,
 	}, nil
 }

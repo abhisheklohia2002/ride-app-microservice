@@ -14,6 +14,10 @@ type UserRepository interface {
 	FindByID(id uint64) (*models.User, error)
 	SearchUsers(query string, excludeUserID uint) ([]models.User, error)
 	UpdateUserById(id uint) (*models.User, error)
+	GetUserByID(
+		ctx context.Context,
+		userID uint64,
+	) (*models.User, error)
 }
 
 type UserRepositoryImpl struct {
@@ -86,6 +90,24 @@ func (r *UserRepositoryImpl) UpdateUserById(userId uint) (*models.User, error) {
 	}
 
 	if err := r.db.Save(&user).Error; err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (r UserRepositoryImpl) GetUserByID(
+	ctx context.Context,
+	userID uint64,
+) (*models.User, error) {
+
+	var user models.User
+
+	err := r.db.WithContext(ctx).
+		First(&user, userID).
+		Error
+
+	if err != nil {
 		return nil, err
 	}
 

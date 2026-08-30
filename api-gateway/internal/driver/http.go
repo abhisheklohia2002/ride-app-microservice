@@ -373,3 +373,52 @@ func GoOffline(
 		},
 	)
 }
+
+func HandleGetUserByID(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	userIDValue := r.PathValue("userId")
+
+	userID, err := strconv.ParseUint(
+		userIDValue,
+		10,
+		64,
+	)
+	if err != nil {
+		http.Error(
+			w,
+			"invalid user id",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	res, err := grpcDriverClient.DriverClient.GetUserByID(
+		r.Context(),
+		&pb.GetUserByIDRequest{
+			UserId: userID,
+		},
+	)
+
+	if err != nil {
+		httpx.Error(
+			w,
+			http.StatusInternalServerError,
+			"failed to get user",
+			"500",
+		)
+		return
+	}
+
+	w.Header().Set(
+		"Content-Type",
+		"application/json",
+	)
+
+	_ = json.NewEncoder(w).Encode(
+		map[string]any{
+			"data": res,
+		},
+	)
+}

@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	pb "github.com/ride-app/shared/pkg/ride"
 	"github.com/ride-service/internal/clinets/matching"
+	"github.com/ride-service/internal/clinets/user"
 	"github.com/ride-service/internal/config"
 	"github.com/ride-service/internal/db"
 	"github.com/ride-service/internal/handlers"
@@ -86,7 +87,9 @@ func main() {
 			"status": "ok",
 		})
 	})
-
+	userClient := user.NewClient(
+		"http://localhost:8080",
+	)
 	publisher, err := rabbitmq.NewPublisher(
 		cfg.RABBITMQ_URL,
 	)
@@ -98,21 +101,20 @@ func main() {
 		)
 	}
 
-	
 	repo := repository.NewRepository(database)
 	outboxWorker := workers.NewOutboxWorker(
 		repo,
 		publisher,
 	)
-	
+
 	ctx := context.Background()
-	
+
 	go outboxWorker.Start(ctx)
 	matchingClient, err := matching.NewClient("localhost:5502")
 	if err != nil {
 		log.Fatalf("failed to Matching listen: %v", err)
 	}
-	svc := services.NewRideService(repo, matchingClient, *publisher)
+	svc := services.NewRideService(repo, matchingClient, *publisher, userClient)
 	handlers := handlers.NewRideHandlers(svc)
 	defer publisher.Close()
 

@@ -40,7 +40,6 @@ export default function DriverActiveRidePage({ ride }: Props) {
   );
 
   const [mapReady, setMapReady] = useState(false);
-  const rideRequest = useDriverRideStore((state) => state.rideRequest);
  const clearRide = useRideStore((state) => state.clearRide);
   const mapContainer = useRef<HTMLDivElement | null>(null);
 
@@ -360,6 +359,8 @@ export default function DriverActiveRidePage({ ride }: Props) {
       useDriverRideStore
         .getState()
         .clearRideRequest();
+
+        window.location.reload();
     },
 
     onError: (error) => {

@@ -15,9 +15,21 @@ service DriverService {
     rpc Refresh(google.protobuf.Empty) returns (UserResponse);
     rpc UpdateLocation(UpdateDriverLocationRequest) returns (DriverLocationResponse);
     rpc GoOffline(GoOfflineRequest) returns (GoOfflineResponse);
+    rpc GetUserByID(GetUserByIDRequest) returns (GetUserByIDResponse);
 
 }
 
+message GetUserByIDRequest {
+  uint64 user_id = 1;
+}
+
+message GetUserByIDResponse {
+  uint64 id = 1;
+  string full_name = 2;
+  string email = 3;
+  string phone = 4;
+  string role = 5;
+}
 service VehicleService {
     rpc Create(CreateRequestVehicle) returns (VehicleResponse);
     rpc Update(UpdateRequestVehicle) returns (VehicleResponse);

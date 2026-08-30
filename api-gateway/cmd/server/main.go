@@ -71,6 +71,11 @@ func main() {
 	)
 
 	mux.HandleFunc(
+		"/api/users/{userId}",
+		driver.HandleGetUserByID,
+	)
+
+	mux.HandleFunc(
 		"POST /api/rides",
 		ride.CreateRide,
 	)

@@ -25,6 +25,7 @@ type DriverServiceClient interface {
 	Refresh(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UserResponse, error)
 	UpdateLocation(ctx context.Context, in *UpdateDriverLocationRequest, opts ...grpc.CallOption) (*DriverLocationResponse, error)
 	GoOffline(ctx context.Context, in *GoOfflineRequest, opts ...grpc.CallOption) (*GoOfflineResponse, error)
+	GetUserByID(ctx context.Context, in *GetUserByIDRequest, opts ...grpc.CallOption) (*GetUserByIDResponse, error)
 }
 
 type driverServiceClient struct {
@@ -98,6 +99,15 @@ func (c *driverServiceClient) GoOffline(ctx context.Context, in *GoOfflineReques
 	return out, nil
 }
 
+func (c *driverServiceClient) GetUserByID(ctx context.Context, in *GetUserByIDRequest, opts ...grpc.CallOption) (*GetUserByIDResponse, error) {
+	out := new(GetUserByIDResponse)
+	err := c.cc.Invoke(ctx, "/driverService.DriverService/GetUserByID", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DriverServiceServer is the server API for DriverService service.
 // All implementations must embed UnimplementedDriverServiceServer
 // for forward compatibility
@@ -109,6 +119,7 @@ type DriverServiceServer interface {
 	Refresh(context.Context, *emptypb.Empty) (*UserResponse, error)
 	UpdateLocation(context.Context, *UpdateDriverLocationRequest) (*DriverLocationResponse, error)
 	GoOffline(context.Context, *GoOfflineRequest) (*GoOfflineResponse, error)
+	GetUserByID(context.Context, *GetUserByIDRequest) (*GetUserByIDResponse, error)
 	mustEmbedUnimplementedDriverServiceServer()
 }
 
@@ -136,6 +147,9 @@ func (UnimplementedDriverServiceServer) UpdateLocation(context.Context, *UpdateD
 }
 func (UnimplementedDriverServiceServer) GoOffline(context.Context, *GoOfflineRequest) (*GoOfflineResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GoOffline not implemented")
+}
+func (UnimplementedDriverServiceServer) GetUserByID(context.Context, *GetUserByIDRequest) (*GetUserByIDResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUserByID not implemented")
 }
 func (UnimplementedDriverServiceServer) mustEmbedUnimplementedDriverServiceServer() {}
 
@@ -276,6 +290,24 @@ func _DriverService_GoOffline_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DriverService_GetUserByID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserByIDRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DriverServiceServer).GetUserByID(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/driverService.DriverService/GetUserByID",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DriverServiceServer).GetUserByID(ctx, req.(*GetUserByIDRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _DriverService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "driverService.DriverService",
 	HandlerType: (*DriverServiceServer)(nil),
@@ -307,6 +339,10 @@ var _DriverService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GoOffline",
 			Handler:    _DriverService_GoOffline_Handler,
+		},
+		{
+			MethodName: "GetUserByID",
+			Handler:    _DriverService_GetUserByID_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -68,8 +68,6 @@ export default function MainLayout() {
   const rideID = useRideStore((state) => state.rideId);
   const {
     data: activeRideResponse,
-    isLoading: activeRideLoading,
-    isError: activeRideError,
   } = useActivePassengerRide(Number(passengerId));
   const cancelRide = useCancelRide();
   const [pickup, setPickup] = useState<SearchResult | null>(null);
@@ -689,7 +687,7 @@ export default function MainLayout() {
         setSearchStartedAt(null);
         setRemainingSeconds(SEARCH_DURATION);
         setRideSearchError(null);
-
+        console.log(message.data,'driver')
         setAssignedDriver({
           id: message.data.driver_id,
           name: message.data.driver_name,
@@ -809,34 +807,6 @@ export default function MainLayout() {
     };
   }, [passengerId, setAssignedDriver, setDriverLocation, clearRide]);
 
-  const resetRideState = () => {
-    setIsSearchingDriver(false);
-    setSearchStartedAt(null);
-    setRemainingSeconds(SEARCH_DURATION);
-
-    setAssignedDriver(null);
-    setPickup(null);
-    setDestination(null);
-
-    setRideCancellationNotice(false);
-
-    useRideTrackingStore.getState().clearRideTracking();
-
-    clearRide();
-
-    if (mapRef.current) {
-      removeRoute(mapRef.current);
-      removeDriverRoute(mapRef.current);
-    }
-
-    pickupMarker.current?.remove();
-    destinationMarker.current?.remove();
-    driverMarker.current?.remove();
-
-    pickupMarker.current = null;
-    destinationMarker.current = null;
-    driverMarker.current = null;
-  };
 
   if (loading) {
     return (

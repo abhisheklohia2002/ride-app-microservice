@@ -9,7 +9,6 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import {
   Navigation,
   Bell,
-  User,
   Car,
   Power,
   Wallet,
@@ -35,7 +34,6 @@ import { useAuthStore } from "../../stores/auth/auth.store";
 import {
   useAcceptRide,
   useCancelRide,
-  useCompleteRide,
 } from "../../http/ride/hooks/use-rides";
 import DriverActiveRidePage from "./DriverActiveRidePage";
 import {
@@ -50,7 +48,7 @@ export default function DriverHomePage() {
   const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(
     null,
   );
-  const [rideError, setRideError] = useState<string | null>(null);
+  const [_, setRideError] = useState<string | null>(null);
   const goOfflineMutation = useDriverOffline();
   const { setRideRequest } = useDriverRideStore();
   const acceptRideMutation = useAcceptRide();
@@ -343,6 +341,8 @@ export default function DriverHomePage() {
           });
 
           useDriverRideStore.getState().clearRideRequest();
+
+          // window.location.reload();
         },
         onError: (error) => {
           handleRideError(error);
@@ -450,8 +450,8 @@ export default function DriverHomePage() {
         </button>
 
         <div
-          // type="button"
-          className="absolute right-5 bottom-5 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xl"
+          
+          className="absolute right-5 bottom-5 z-10000 flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xl"
         >
           <ProfileMenu />
         </div>

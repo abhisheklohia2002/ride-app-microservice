@@ -37,6 +37,10 @@ type UserService interface {
 		ctx context.Context,
 		driverID uint64,
 	) error
+	GetUserByID(
+		ctx context.Context,
+		userID uint64,
+	) (*models.User, error)
 }
 
 type UserServiceImpl struct {
@@ -352,5 +356,22 @@ func (s *UserServiceImpl) GoOffline(
 	return s.publisher.Publish(
 		"DRIVER_OFFLINE",
 		body,
+	)
+}
+
+func (s UserServiceImpl) GetUserByID(
+	ctx context.Context,
+	userID uint64,
+) (*models.User, error) {
+
+	if userID == 0 {
+		return nil, errors.New(
+			"user id is required",
+		)
+	}
+
+	return s.repo.GetUserByID(
+		ctx,
+		userID,
 	)
 }
