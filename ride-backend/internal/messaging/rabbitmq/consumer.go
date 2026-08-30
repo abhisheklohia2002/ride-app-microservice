@@ -99,3 +99,16 @@ func (c *Consumer) Close() {
 		_ = c.conn.Close()
 	}
 }
+
+func (c *Consumer) Bind(
+	queueName string,
+	routingKey string,
+) error {
+	return c.channel.QueueBind(
+		queueName,
+		routingKey,
+		RideExchange,
+		false,
+		nil,
+	)
+}

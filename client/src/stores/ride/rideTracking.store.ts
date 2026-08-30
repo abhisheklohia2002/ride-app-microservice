@@ -32,7 +32,7 @@ interface RideTrackingState {
   setActiveRide: (ride: ActiveRide) => void;
 
   setAssignedDriver: (
-    driver: AssignedDriver,
+    driver: AssignedDriver | null,
   ) => void;
 
   setDriverLocation: (

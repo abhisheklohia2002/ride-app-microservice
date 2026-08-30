@@ -38,15 +38,19 @@ import {
   useCompleteRide,
 } from "../../http/ride/hooks/use-rides";
 import DriverActiveRidePage from "./DriverActiveRidePage";
-import { useActiveDriverRide, useDriverOffline } from "../../http/driver/hooks/use-driver";
+import {
+  useActiveDriverRide,
+  useDriverOffline,
+} from "../../http/driver/hooks/use-driver";
 import ProfileMenu from "../../components/ProfileMenu";
+import type { RideRequest } from "../../http/driver/hooks/driver-socket";
 
 export default function DriverHomePage() {
   const { notification } = AntApp.useApp();
   const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(
     null,
   );
-
+  const [rideError, setRideError] = useState<string | null>(null);
   const goOfflineMutation = useDriverOffline();
   const { setRideRequest } = useDriverRideStore();
   const acceptRideMutation = useAcceptRide();
@@ -77,7 +81,26 @@ export default function DriverHomePage() {
       setDriverLocation(newLocation);
     },
   });
+  const resetRideState = () => {
+    useDriverRideStore.getState().clearRideRequest();
 
+    useDriverRideStore.getState().clearActiveRide();
+
+    setRideError(null);
+  };
+
+  const handleRideError = (error: any) => {
+    console.error("Ride error:", error);
+
+    const message =
+      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      "Something went wrong with this ride.";
+
+    resetRideState();
+
+    setRideError(message);
+  };
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) {
       return;
@@ -192,7 +215,20 @@ export default function DriverHomePage() {
       console.log("DRIVER WS MESSAGE:", message);
 
       if (message.type === "RIDE_REQUEST") {
-        useDriverRideStore.getState().setRideRequest(message.data as any);
+        useDriverRideStore
+          .getState()
+          .setRideRequest(message.data as RideRequest);
+      }
+      if (message.type === "RIDE_TAKEN") {
+        const event = message.data as {
+          ride_id: number;
+        };
+
+        const currentRequest = useDriverRideStore.getState().rideRequest;
+
+        if (currentRequest?.ride_id === event.ride_id) {
+          useDriverRideStore.getState().clearRideRequest();
+        }
       }
 
       if (message.type === "RIDE_CANCELLED") {
@@ -263,7 +299,6 @@ export default function DriverHomePage() {
     });
   }, [activeRideResponse]);
 
-
   const handleCurrentLocation = () => {
     if (!mapRef.current) {
       return;
@@ -288,6 +323,7 @@ export default function DriverHomePage() {
     if (!rideRequest || !driverId) {
       return;
     }
+      console.log(rideRequest.ride_id)
 
     acceptRideMutation.mutate(
       {
@@ -307,6 +343,9 @@ export default function DriverHomePage() {
           });
 
           useDriverRideStore.getState().clearRideRequest();
+        },
+        onError: (error) => {
+          handleRideError(error);
         },
       },
     );
@@ -329,31 +368,27 @@ export default function DriverHomePage() {
         },
         onError: (error: Error) => {
           console.error("Failed to cancel ride:", error);
+          handleRideError(error);
         },
       },
     );
   };
 
   const handleToggle = async () => {
-  if (isOnline) {
-    try {
-      await goOfflineMutation.mutateAsync(
-        Number(driverId),
-      );
+    if (isOnline) {
+      try {
+        await goOfflineMutation.mutateAsync(Number(driverId));
 
-      setOffline();
-    } catch (error) {
-      console.error(
-        "Failed to go offline:",
-        error,
-      );
+        setOffline();
+      } catch (error) {
+        console.error("Failed to go offline:", error);
+      }
+
+      return;
     }
 
-    return;
-  }
-
-  setOnline();
-};
+    setOnline();
+  };
   if (activeRide) {
     return <DriverActiveRidePage ride={activeRide} />;
   }

@@ -50,7 +50,7 @@ export default function MainLayout() {
   const SEARCH_DURATION = 120;
   const [mapReady, setMapReady] = useState(false);
   const [isSearchingDriver, setIsSearchingDriver] = useState(false);
-
+  const [rideCompletedNotice, setRideCompletedNotice] = useState(false);
   const [searchStartedAt, setSearchStartedAt] = useState<number | null>(null);
 
   const [remainingSeconds, setRemainingSeconds] = useState(SEARCH_DURATION);
@@ -71,8 +71,6 @@ export default function MainLayout() {
     isLoading: activeRideLoading,
     isError: activeRideError,
   } = useActivePassengerRide(Number(passengerId));
-
-  console.log(assignedDriver, "assignedDriver");
   const cancelRide = useCancelRide();
   const [pickup, setPickup] = useState<SearchResult | null>(null);
 
@@ -625,85 +623,67 @@ export default function MainLayout() {
     });
   };
   useEffect(() => {
-  const ride = activeRideResponse?.data?.ride;
+    const ride = activeRideResponse?.data?.ride;
 
-  if (!ride) {
-    return;
-  }
+    if (!ride) {
+      useRideTrackingStore.getState().clearRideTracking();
+      clearRide();
+      return;
+    }
 
-  setRide(
-    ride.id,
-    ride.status as any,
-  );
+    setRide(ride.id, ride.status as any);
 
-  if (
-    ride.status === "DRIVER_ASSIGNED" ||
-    ride.status === "DRIVER_ARRIVING" ||
-    ride.status === "DRIVER_ARRIVED" ||
-    ride.status === "TRIP_STARTED"
-  ) {
-    setIsSearchingDriver(false);
-    setSearchStartedAt(null);
-    setRemainingSeconds(SEARCH_DURATION);
-    setRideSearchError(null);
-  }
+    if (
+      ride.status === "DRIVER_ASSIGNED" ||
+      ride.status === "DRIVER_ARRIVING" ||
+      ride.status === "DRIVER_ARRIVED" ||
+      ride.status === "TRIP_STARTED"
+    ) {
+      setIsSearchingDriver(false);
+      setSearchStartedAt(null);
+      setRemainingSeconds(SEARCH_DURATION);
+      setRideSearchError(null);
+    }
 
-  setPickup({
-    id: "pickup",
-    address:
-      ride.pickup.address ?? "Pickup",
-    latitude:
-      ride.pickup.latitude,
-    longitude:
-      ride.pickup.longitude,
-  });
-
-  setDestination({
-    id: "destination",
-    address:
-      ride.destination.address ??
-      "Destination",
-    latitude:
-      ride.destination.latitude,
-    longitude:
-      ride.destination.longitude,
-  });
-
-  if (ride.driver_id) {
-    setAssignedDriver({
-      id: ride.driver_id,
-      name: "Driver",
+    setPickup({
+      id: "pickup",
+      address: ride.pickup.address ?? "Pickup",
+      latitude: ride.pickup.latitude,
+      longitude: ride.pickup.longitude,
     });
-  }
 
-  useRideTrackingStore
-    .getState()
-    .setActiveRide({
+    setDestination({
+      id: "destination",
+      address: ride.destination.address ?? "Destination",
+      latitude: ride.destination.latitude,
+      longitude: ride.destination.longitude,
+    });
+
+    if (ride.driver_id) {
+      setAssignedDriver({
+        id: ride.driver_id,
+        name: "Driver",
+      });
+    }
+
+    useRideTrackingStore.getState().setActiveRide({
       id: ride.id,
       passengerId: ride.passenger_id,
       driverId: ride.driver_id,
       status: ride.status,
-      pickupLatitude:
-        ride.pickup.latitude,
-      pickupLongitude:
-        ride.pickup.longitude,
-      dropoffLatitude:
-        ride.destination.latitude,
-      dropoffLongitude:
-        ride.destination.longitude,
+      pickupLatitude: ride.pickup.latitude,
+      pickupLongitude: ride.pickup.longitude,
+      dropoffLatitude: ride.destination.latitude,
+      dropoffLongitude: ride.destination.longitude,
     });
-}, [
-  activeRideResponse,
-  setRide,
-  setAssignedDriver,
-]);
+  }, [activeRideResponse, setRide, setAssignedDriver]);
   useEffect(() => {
     if (!passengerId) {
       return;
     }
 
     connectPassengerSocket(Number(passengerId), (message) => {
-      console.log(message.type,'message.type')
+      console.log(message.type, "message.type");
       if (message.type === "RIDE_ASSIGNED") {
         setIsSearchingDriver(false);
         setSearchStartedAt(null);
@@ -731,70 +711,70 @@ export default function MainLayout() {
         setRideSearchError("No driver found. Please try again.");
       }
       if (message.type === "RIDE_COMPLETED") {
-  const completedRide = message.data as {
-    ride_id: number;
-    passenger_id: number;
-    driver_id: number;
-  };
+        const completedRide = message.data as {
+          ride_id: number;
+          passenger_id: number;
+          driver_id: number;
+        };
 
-  const currentRideId =
-    useRideStore.getState().rideId;
+        const currentRideId = useRideStore.getState().rideId;
 
-  if (
-    completedRide.ride_id !== currentRideId
-  ) {
-    return;
-  }
+        if (completedRide.ride_id !== currentRideId) {
+          return;
+        }
 
-  console.log(
-    "PASSENGER RIDE COMPLETED:",
-    completedRide.ride_id,
-  );
+        console.log("PASSENGER RIDE COMPLETED:", completedRide.ride_id);
 
-  // Stop searching state
-  setIsSearchingDriver(false);
-  setSearchStartedAt(null);
-  setRemainingSeconds(SEARCH_DURATION);
+        // Clear searching state
+        setIsSearchingDriver(false);
+        setSearchStartedAt(null);
+        setRemainingSeconds(SEARCH_DURATION);
 
-  // Clear messages
-  setRideSearchError(null);
-  setRideCancellationNotice(false);
+        // Clear ride-related messages
+        setRideSearchError(null);
+        setRideCancellationNotice(false);
 
-  // Clear ride data
-  clearRide();
+        // Clear assigned driver
+        setAssignedDriver(null);
 
-  // Clear locations
-  setPickup(null);
-  setDestination(null);
+        // Clear pickup/destination
+        setPickup(null);
+        setDestination(null);
 
-  // Clear route information
-  setDistance(null);
-  setDuration(null);
+        // Clear route info
+        setDistance(null);
+        setDuration(null);
 
-  // Clear tracking store
-  useRideTrackingStore
-    .getState()
-    .clearRideTracking();
+        // Clear tracking state
+        useRideTrackingStore.getState().clearRideTracking();
 
-  // Remove map markers
-  pickupMarker.current?.remove();
-  pickupMarker.current = null;
+        // Clear current ride
+        clearRide();
 
-  destinationMarker.current?.remove();
-  destinationMarker.current = null;
+        // Remove map markers
+        pickupMarker.current?.remove();
+        pickupMarker.current = null;
 
-  driverMarker.current?.remove();
-  driverMarker.current = null;
+        destinationMarker.current?.remove();
+        destinationMarker.current = null;
 
-  // Remove map routes
-  if (mapRef.current) {
-    removeRoute(mapRef.current);
-    removeDriverRoute(mapRef.current);
-  }
+        driverMarker.current?.remove();
+        driverMarker.current = null;
 
-  // Clear assigned driver
-  setAssignedDriver(null);
-}
+        // Remove routes
+        if (mapRef.current) {
+          removeRoute(mapRef.current);
+          removeDriverRoute(mapRef.current);
+        }
+
+        // Show completion message
+        setRideCompletedNotice(true);
+
+        // Automatically hide after 4 seconds
+        window.setTimeout(() => {
+          setRideCompletedNotice(false);
+        }, 3000);
+      }
       if (message.type === "RIDE_CANCELLED") {
         const cancelledRide = message.data as {
           ride_id: number;
@@ -828,6 +808,35 @@ export default function MainLayout() {
       disconnectPassengerSocket();
     };
   }, [passengerId, setAssignedDriver, setDriverLocation, clearRide]);
+
+  const resetRideState = () => {
+    setIsSearchingDriver(false);
+    setSearchStartedAt(null);
+    setRemainingSeconds(SEARCH_DURATION);
+
+    setAssignedDriver(null);
+    setPickup(null);
+    setDestination(null);
+
+    setRideCancellationNotice(false);
+
+    useRideTrackingStore.getState().clearRideTracking();
+
+    clearRide();
+
+    if (mapRef.current) {
+      removeRoute(mapRef.current);
+      removeDriverRoute(mapRef.current);
+    }
+
+    pickupMarker.current?.remove();
+    destinationMarker.current?.remove();
+    driverMarker.current?.remove();
+
+    pickupMarker.current = null;
+    destinationMarker.current = null;
+    driverMarker.current = null;
+  };
 
   if (loading) {
     return (
@@ -899,6 +908,21 @@ export default function MainLayout() {
       >
         <Navigation size={18} />
       </button>
+      {rideCompletedNotice && (
+        <section className="absolute bottom-5 left-5 right-5 z-50 mx-auto max-w-md rounded-3xl border border-emerald-100 bg-white p-6 text-center shadow-2xl">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
+            <span className="text-xl">✓</span>
+          </div>
+
+          <h2 className="mt-4 text-lg font-bold text-slate-950">
+            Ride completed
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Your ride has been completed successfully.
+          </p>
+        </section>
+      )}
       <div className="absolute right-5 bottom-5 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xl">
         <ProfileMenu />
       </div>
@@ -1020,7 +1044,7 @@ export default function MainLayout() {
           </div>
         </section>
       )}
-      {!isSearchingDriver && !assignedDriver && !rideSearchError && (
+      {!isSearchingDriver && !assignedDriver && (
         <motion.div
           drag="y"
           dragConstraints={{

@@ -78,13 +78,15 @@ func (s *MatchingService) AddPendingRide(
 		DropoffLongitude: event.DropoffLongitude,
 		VehicleType:      event.VehicleType,
 		CreatedAt:        time.Now(),
+
+		OfferedDrivers:  make(map[uint64]bool),
+		RejectedDrivers: make(map[uint64]bool),
 	}
 
 	s.pendingRideStore.Set(ride)
 
 	log.Printf(
-		"PENDING STORE INSTANCE=%p SET ride=%d",
-		s.pendingRideStore,
+		"PENDING RIDE STORED ride=%d",
 		ride.RideID,
 	)
 }
@@ -120,6 +122,15 @@ func (s *MatchingService) TryMatchPendingRide(
 	ctx context.Context,
 	ride PendingRide,
 ) error {
+
+	if ride.OfferedDrivers == nil {
+		ride.OfferedDrivers = make(map[uint64]bool)
+	}
+
+	if ride.RejectedDrivers == nil {
+		ride.RejectedDrivers = make(map[uint64]bool)
+	}
+
 	if time.Since(ride.CreatedAt) >= RideSearchTimeout {
 		return s.ExpirePendingRide(
 			ctx,
@@ -143,62 +154,66 @@ func (s *MatchingService) TryMatchPendingRide(
 			ride.RideID,
 		)
 
+		// Important: save initialized maps
+		s.pendingRideStore.Set(ride)
+
 		return nil
 	}
 
-	driverName := drivers[time.Now().UnixNano()%int64(len(drivers))]
+	for _, driverName := range drivers {
 
-	driverIDString := strings.TrimPrefix(
-		driverName,
-		"driver:",
-	)
+		driverIDString := strings.TrimPrefix(
+			driverName,
+			"driver:",
+		)
 
-	driverID, err := strconv.ParseUint(
-		driverIDString,
-		10,
-		64,
-	)
-	if err != nil {
-		return err
+		driverID, err := strconv.ParseUint(
+			driverIDString,
+			10,
+			64,
+		)
+		if err != nil {
+			return err
+		}
+
+		if ride.OfferedDrivers[driverID] {
+			continue
+		}
+
+		if ride.RejectedDrivers[driverID] {
+			continue
+		}
+
+		request := events.RideRequestedEvent{
+			RideID:           ride.RideID,
+			PassengerID:      int64(ride.PassengerID),
+			DriverID:         driverID,
+			PickupLatitude:   ride.PickupLatitude,
+			PickupLongitude:  ride.PickupLongitude,
+			DropoffLatitude:  ride.DropoffLatitude,
+			DropoffLongitude: ride.DropoffLongitude,
+			VehicleType:      ride.VehicleType,
+		}
+
+		if err := s.publisher.Publish(
+			ctx,
+			rabbitmq.RideExchange,
+			"RIDE_REQUESTED",
+			request,
+		); err != nil {
+			return err
+		}
+
+		ride.OfferedDrivers[driverID] = true
+
+		log.Printf(
+			"ride request offered ride=%d driver=%d",
+			ride.RideID,
+			driverID,
+		)
 	}
 
-	log.Printf(
-		"driver selected ride=%d driver=%d",
-		ride.RideID,
-		driverID,
-	)
-
-	request := events.RideRequestedEvent{
-		RideID:           ride.RideID,
-		PassengerID:      int64(ride.PassengerID),
-		DriverID:         driverID,
-		PickupLatitude:   ride.PickupLatitude,
-		PickupLongitude:  ride.PickupLongitude,
-		DropoffLatitude:  ride.DropoffLatitude,
-		DropoffLongitude: ride.DropoffLongitude,
-		VehicleType:      ride.VehicleType,
-	}
-
-	if err := s.publisher.Publish(
-		ctx,
-		rabbitmq.RideExchange,
-		"RIDE_REQUESTED",
-		request,
-	); err != nil {
-		return err
-	}
-
-	s.offerStore.Set(ride.RideID, driverID)
-
-	s.pendingRideStore.Remove(
-		ride.RideID,
-	)
-
-	log.Printf(
-		"ride request published ride=%d driver=%d",
-		ride.RideID,
-		driverID,
-	)
+	s.pendingRideStore.Set(ride)
 
 	return nil
 }
@@ -292,5 +307,39 @@ func (s *MatchingService) RemoveDriverLocation(
 	return s.driverLocationRepo.RemoveDriverLocation(
 		ctx,
 		driverID,
+	)
+
+}
+
+func (s *MatchingService) HandleRideAccepted(
+	ctx context.Context,
+	event events.RideAcceptedEvent,
+) error {
+
+	log.Printf(
+		"processing ride accept ride=%d driver=%d",
+		event.RideID,
+		event.DriverID,
+	)
+
+	// For now, Matching forwards the acceptance
+	// to Ride Service / booking logic.
+	return s.publisher.Publish(
+		ctx,
+		rabbitmq.RideExchange,
+		"DRIVER_ACCEPTED",
+		event,
+	)
+}
+
+func (s *MatchingService) PublishRideTaken(
+	ctx context.Context,
+	event events.RideTakenEvent,
+) error {
+	return s.publisher.Publish(
+		ctx,
+		rabbitmq.RideExchange,
+		"RIDE_TAKEN",
+		event,
 	)
 }

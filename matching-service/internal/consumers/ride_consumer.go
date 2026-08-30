@@ -17,6 +17,7 @@ type RideConsumer struct {
 	rabbitConsumer   *rabbitmq.Consumer
 	matchingService  *services.MatchingService
 	passengerHub     *matchingWebSocket.Hub
+	hub              *matchingWebSocket.Hub
 	activeRideStore  *services.ActiveRideStore
 	pendingRideStore *services.PendingRideStore
 }
@@ -67,6 +68,37 @@ func (c *RideConsumer) Start(
 		return err
 	}
 
+	if err := c.rabbitConsumer.Bind(
+		queueName,
+		rabbitmq.RideExchange,
+		"RIDE_REJECTED",
+	); err != nil {
+		return err
+	}
+
+	if err := c.rabbitConsumer.Bind(
+		queueName,
+		rabbitmq.RideExchange,
+		"RIDE_ACCEPTED",
+	); err != nil {
+		return err
+	}
+
+	if err := c.rabbitConsumer.Bind(
+		queueName,
+		rabbitmq.RideExchange,
+		"RIDE_TAKEN",
+	); err != nil {
+		return err
+	}
+
+	if err := c.rabbitConsumer.Bind(
+		queueName,
+		rabbitmq.RideExchange,
+		"RIDE_COMPLETED",
+	); err != nil {
+		return err
+	}
 	log.Println("ride consumer started")
 
 	go func() {
@@ -123,13 +155,20 @@ func (c *RideConsumer) handleMessage(
 
 	case "RIDE_ASSIGNED":
 		return c.handleRideAssigned(
+			ctx,
 			message,
 		)
+	case "RIDE_COMPLETED":
+		return c.handleRideCompleted(ctx, message)
 
 	case "RIDE_CANCELLED":
 		return c.handleRideCancelled(ctx, message)
-	
 
+	case "RIDE_REJECTED":
+		return c.handleRideRejected(
+			ctx,
+			message,
+		)
 	default:
 		log.Printf(
 			"unknown ride event routing key=%s",
@@ -191,6 +230,7 @@ func (c *RideConsumer) handleRideSearching(
 }
 
 func (c *RideConsumer) handleRideAssigned(
+	ctx context.Context,
 	message amqp091.Delivery,
 ) error {
 	var event events.RideAssignedEvent
@@ -203,23 +243,55 @@ func (c *RideConsumer) handleRideAssigned(
 	}
 
 	log.Printf(
-		"ride assigned ride=%d passenger=%d driver=%d driverName=%s",
+		"ride assigned ride=%d passenger=%d winner=%d",
 		event.RideID,
 		event.PassengerID,
 		event.DriverID,
-		event.DriverName,
 	)
 
-	c.activeRideStore.Set(
+	ride, ok := c.pendingRideStore.Get(
 		event.RideID,
-		event.PassengerID,
-		event.DriverID,
 	)
+
+	if ok {
+		for driverID := range ride.OfferedDrivers {
+
+			// Winner should NOT receive RIDE_TAKEN.
+			if driverID == event.DriverID {
+				continue
+			}
+
+			takenEvent := events.RideTakenEvent{
+				RideID:          event.RideID,
+				DriverID:        driverID,
+				WinningDriverID: event.DriverID,
+			}
+
+			if err := c.matchingService.PublishRideTaken(
+				ctx,
+				takenEvent,
+			); err != nil {
+				return err
+			}
+
+			log.Printf(
+				"ride taken published ride=%d loser=%d winner=%d",
+				event.RideID,
+				driverID,
+				event.DriverID,
+			)
+		}
+	}
 
 	c.pendingRideStore.Remove(
 		event.RideID,
 	)
-	c.matchingService.RemoveOfferedRide(event.RideID)
+
+	c.activeRideStore.Set(
+		event.RideID,
+		uint64(event.PassengerID),
+		event.DriverID,
+	)
 
 	payload := map[string]any{
 		"type": "RIDE_ASSIGNED",
@@ -232,11 +304,6 @@ func (c *RideConsumer) handleRideAssigned(
 	); err != nil {
 		return err
 	}
-
-	log.Printf(
-		"ride assigned event sent to passenger=%d",
-		event.PassengerID,
-	)
 
 	return nil
 }
@@ -272,4 +339,98 @@ func (c *RideConsumer) handleRideCancelled(
 	}
 
 	return c.passengerHub.SendToPassenger(event.PassengerID, payload)
+}
+
+func (c *RideConsumer) handleRideRejected(
+	ctx context.Context,
+	message amqp091.Delivery,
+) error {
+	var event events.RideRejectedEvent
+
+	if err := json.Unmarshal(
+		message.Body,
+		&event,
+	); err != nil {
+		return err
+	}
+
+	log.Printf(
+		"RIDE_REJECTED ride=%d driver=%d",
+		event.RideID,
+		event.DriverID,
+	)
+
+	ride, ok := c.pendingRideStore.Get(
+		event.RideID,
+	)
+
+	if !ok {
+		log.Printf(
+			"pending ride not found ride=%d",
+			event.RideID,
+		)
+
+		return nil
+	}
+
+	if ride.RejectedDrivers == nil {
+		ride.RejectedDrivers =
+			make(map[uint64]bool)
+	}
+
+	ride.RejectedDrivers[event.DriverID] = true
+
+	c.pendingRideStore.Set(ride)
+
+	log.Printf(
+		"driver rejected ride=%d driver=%d",
+		event.RideID,
+		event.DriverID,
+	)
+
+	return c.matchingService.TryMatchPendingRide(
+		ctx,
+		ride,
+	)
+}
+
+func (c *RideConsumer) handleRideCompleted(
+	ctx context.Context,
+	message amqp091.Delivery,
+) error {
+
+	var event events.RideCompletedEvent
+
+	if err := json.Unmarshal(
+		message.Body,
+		&event,
+	); err != nil {
+		return err
+	}
+
+	log.Printf(
+		"RIDE_COMPLETED received ride=%d passenger=%d driver=%d",
+		event.RideID,
+		event.PassengerID,
+		event.DriverID,
+	)
+
+	payload := map[string]any{
+		"type": "RIDE_COMPLETED",
+		"data": event,
+	}
+
+	if err := c.passengerHub.SendToPassenger(
+		event.PassengerID,
+		payload,
+	); err != nil {
+		return err
+	}
+
+	log.Printf(
+		"RIDE_COMPLETED sent to passenger=%d",
+		event.PassengerID,
+	)
+
+	return nil
 }

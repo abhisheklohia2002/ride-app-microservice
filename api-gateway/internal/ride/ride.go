@@ -5,7 +5,9 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+
 	grpcRideClient "github.com/ride-api-gateway/internal/grpc/ride"
+	"github.com/ride-api-gateway/internal/httpx"
 	pb "github.com/ride-app/shared/pkg/ride"
 )
 
@@ -139,10 +141,11 @@ func AcceptRide(
 		)
 
 	if err != nil {
-		http.Error(
+		httpx.Error(
 			w,
-			"failed to accept ride",
 			http.StatusInternalServerError,
+			"failed to accept ride",
+			"500",
 		)
 		return
 	}
@@ -165,10 +168,11 @@ func CancelRide(
 	r *http.Request,
 ) {
 	if r.Method != http.MethodPost {
-		http.Error(
+		httpx.Error(
 			w,
-			"method not allowed",
 			http.StatusMethodNotAllowed,
+			"method not allowed",
+			"405",
 		)
 		return
 	}
@@ -195,10 +199,11 @@ func CancelRide(
 	if err := json.NewDecoder(
 		r.Body,
 	).Decode(&body); err != nil {
-		http.Error(
+		httpx.Error(
 			w,
-			"invalid request body",
 			http.StatusBadRequest,
+			"invalid request body",
+			"400",
 		)
 		return
 	}
@@ -223,10 +228,11 @@ func CancelRide(
 		)
 
 	if err != nil {
-		http.Error(
+		httpx.Error(
 			w,
-			"failed to cancel ride",
 			http.StatusInternalServerError,
+			"failed to cancel ride",
+			"500",
 		)
 		return
 	}
@@ -256,10 +262,11 @@ func GetActivePassengerRide(
 		64,
 	)
 	if err != nil {
-		http.Error(
+		httpx.Error(
 			w,
-			"invalid passenger id",
 			http.StatusBadRequest,
+			"invalid passenger id",
+			"INVALID_REQUEST",
 		)
 		return
 	}
@@ -273,10 +280,11 @@ func GetActivePassengerRide(
 		)
 
 	if err != nil {
-		http.Error(
+		httpx.Error(
 			w,
-			err.Error(),
 			http.StatusBadRequest,
+			"Ride is not Found",
+			"INVALID_REQUEST",
 		)
 		return
 	}
@@ -390,5 +398,3 @@ func CompleteRide(
 		},
 	)
 }
-
-

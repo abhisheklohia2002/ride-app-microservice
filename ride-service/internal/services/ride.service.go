@@ -30,8 +30,9 @@ type Service interface {
 	) (*models.Ride, error)
 	AcceptRide(
 		ctx context.Context,
-		req dto.AcceptRideRequest,
-	) (*models.Ride, error)
+		rideID uint64,
+		driverID uint64,
+	) (*models.Ride, bool, error)
 	CancelRide(
 		ctx context.Context,
 		req dto.CancelRideRequest,
@@ -261,18 +262,24 @@ func (s serviceImpl) TransitionRide(
 
 func (s serviceImpl) AcceptRide(
 	ctx context.Context,
-	req dto.AcceptRideRequest,
-) (*models.Ride, error) {
-
-	if req.RideID == 0 {
-		return nil, errors.New("ride id is required")
+	rideID uint64,
+	driverID uint64,
+) (*models.Ride, bool, error) {
+	log.Printf(
+		"ACCEPT RIDE REQUEST ride=%d driver=%d",
+		rideID,
+		driverID,
+	)
+	if rideID == 0 {
+		return nil, false, errors.New("ride id is required")
 	}
 
-	if req.DriverID == 0 {
-		return nil, errors.New("driver id is required")
+	if driverID == 0 {
+		return nil, false, errors.New("driver id is required")
 	}
 
 	var ride *models.Ride
+	var assigned bool
 
 	err := s.repo.Transaction(
 		ctx,
@@ -283,7 +290,7 @@ func (s serviceImpl) AcceptRide(
 			ride, err = s.repo.GetRideByID(
 				ctx,
 				tx,
-				uint64(req.RideID),
+				rideID,
 			)
 			if err != nil {
 				return err
@@ -293,83 +300,83 @@ func (s serviceImpl) AcceptRide(
 				return errors.New("ride not found")
 			}
 
-			if ride.Status != string(
-				enums.RideStatusSearchingDriver,
-			) {
-				return errors.New(
-					"ride is not available for assignment",
+			log.Printf(
+				"CALLING ASSIGN DRIVER ride=%d driver=%d",
+				rideID,
+				driverID,
+			)
+			// Atomic assignment
+			assigned, err =
+				s.repo.AssignDriver(
+					ctx,
+					tx,
+					rideID,
+					driverID,
 				)
+			log.Printf(
+				"ASSIGN DRIVER RESULT ride=%d driver=%d assigned=%v err=%v",
+				rideID,
+				driverID,
+				assigned,
+				err,
+			)
+			if err != nil {
+				return err
 			}
 
-			ride.DriverID = &req.DriverID
+			if !assigned {
+				return nil
+			}
+
+			ride.DriverID = &driverID
 			ride.Status = string(
 				enums.RideStatusDriverAssigned,
 			)
-
-			updatedRide, err :=
-				s.repo.UpdateRideTx(
-					ctx,
-					tx,
-					ride,
-				)
-			if err != nil {
-				return err
-			}
-
-			history := models.RideStatusHistory{
-				RideID:     updatedRide.ID,
-				FromStatus: string(enums.RideStatusSearchingDriver),
-				ToStatus:   string(enums.RideStatusDriverAssigned),
-				ChangedBy:  "DRIVER",
-			}
-
-			if err := s.repo.CreateRideStatusHistory(
-				ctx,
-				tx,
-				history,
-			); err != nil {
-				return err
-			}
-
-			event := events.RideAssignedEvent{
-				RideID:      int64(updatedRide.ID),
-				PassengerID: updatedRide.PassengerID,
-				DriverID:    req.DriverID,
-				DriverName:  "David",
-			}
-
-			payload, err := json.Marshal(event)
-			if err != nil {
-				return err
-			}
-
-			outboxEvent := models.OutboxEvent{
-				EventType:     "RIDE_ASSIGNED",
-				AggregateType: "RIDE",
-				AggregateID:   updatedRide.ID,
-				Payload:       string(payload),
-				Status:        string(enums.OutboxStatusPending),
-			}
-
-			if err := s.repo.CreateOutboxEvent(
-				ctx,
-				tx,
-				outboxEvent,
-			); err != nil {
-				return err
-			}
-
-			ride = updatedRide
 
 			return nil
 		},
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	return ride, nil
+	if !assigned {
+		return nil, false, nil
+	}
+
+	log.Printf(
+		"ASSIGN DRIVER RESULT ride=%d driver=%d assigned=%v",
+		rideID,
+		driverID,
+		assigned,
+	)
+	// Publish RIDE_ASSIGNED here.
+	event := events.RideAssignedEvent{
+		RideID:      int64(ride.ID),
+		PassengerID: ride.PassengerID,
+		DriverID:    driverID,
+	}
+
+	body, err := json.Marshal(event)
+	if err != nil {
+		return nil, false, err
+	}
+
+	log.Printf(
+		"RIDE_ASSIGNED publishing ride=%d passenger=%d driver=%d",
+		ride.ID,
+		ride.PassengerID,
+		driverID,
+	)
+	if err := s.publister.Publish(
+		"RIDE_ASSIGNED",
+		body,
+	); err != nil {
+		return nil, false, err
+	}
+
+	return ride, true, nil
 }
 
 func (s serviceImpl) CancelRide(
@@ -607,6 +614,8 @@ func (s serviceImpl) CompleteRide(
 	); err != nil {
 		return nil, err
 	}
+
+	
 
 	return ride, nil
 }

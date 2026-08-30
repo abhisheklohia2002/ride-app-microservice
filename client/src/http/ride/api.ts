@@ -17,7 +17,7 @@ export const createRide = async (
 
 
 export const acceptRide = async (
-  rideId: number,
+  rideId: number | undefined,
   driverId: number,
 ) => {
   const { data } = await api.post(

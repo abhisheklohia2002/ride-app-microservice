@@ -19,7 +19,7 @@ export const useAcceptRide = () => {
       rideId,
       driverId,
     }: {
-      rideId: number;
+      rideId: number | undefined;
       driverId: number;
     }) => acceptRide(rideId, driverId),
   });
@@ -52,6 +52,7 @@ export const useActivePassengerRide = (
       "active-passenger-ride",
       passengerId,
     ],
+
     queryFn: async () => {
       try {
         return await getActivePassengerRide(
@@ -59,7 +60,7 @@ export const useActivePassengerRide = (
         );
       } catch (error: any) {
         if (
-          error?.response?.status === 404
+          error?.response?.status === 400
         ) {
           return null;
         }
@@ -67,7 +68,9 @@ export const useActivePassengerRide = (
         throw error;
       }
     },
+
     enabled: !!passengerId,
+
     retry: false,
   });
 };

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/ride-service/internal/enums"
@@ -76,6 +77,13 @@ type Repository interface {
 		ctx context.Context,
 		driverID uint64,
 	) (*models.Ride, error)
+
+	AssignDriver(
+		ctx context.Context,
+		tx *gorm.DB,
+		rideID uint64,
+		driverID uint64,
+	) (bool, error)
 }
 
 type repositoryImpl struct {
@@ -274,7 +282,6 @@ func (r *repositoryImpl) GetActiveRideByPassengerID(
 	return &ride, nil
 }
 
-
 func (r *repositoryImpl) GetActiveRideByDriverID(
 	ctx context.Context,
 	driverID uint64,
@@ -296,9 +303,39 @@ func (r *repositoryImpl) GetActiveRideByDriverID(
 		First(&ride).
 		Error
 
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
 	return &ride, nil
+}
+
+func (r repositoryImpl) AssignDriver(
+	ctx context.Context,
+	tx *gorm.DB,
+	rideID uint64,
+	driverID uint64,
+) (bool, error) {
+
+	result := tx.WithContext(ctx).
+		Model(&models.Ride{}).
+		Where(
+			"id = ? AND status = ?",
+			rideID,
+			enums.RideStatusSearchingDriver,
+		).
+		Updates(map[string]any{
+			"driver_id": driverID,
+			"status":    enums.RideStatusDriverAssigned,
+		})
+
+	if result.Error != nil {
+		return false, result.Error
+	}
+
+	return result.RowsAffected == 1, nil
 }

@@ -1,6 +1,8 @@
 package websocket
 
 import (
+	"encoding/json"
+	"fmt"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -8,12 +10,15 @@ import (
 
 type Hub struct {
 	mu         sync.RWMutex
+	writeMu    sync.Mutex
 	passengers map[uint64]*websocket.Conn
+	drivers    map[uint64]*websocket.Conn
 }
 
 func NewHub() *Hub {
 	return &Hub{
 		passengers: make(map[uint64]*websocket.Conn),
+		drivers:    make(map[uint64]*websocket.Conn),
 	}
 }
 
@@ -63,5 +68,39 @@ func (h *Hub) SendToPassenger(
 		return nil
 	}
 
+	h.writeMu.Lock()
+	defer h.writeMu.Unlock()
+
 	return conn.WriteJSON(message)
+}
+
+func (h *Hub) SendToDriver(
+	driverID uint64,
+	payload any,
+) error {
+	h.mu.RLock()
+
+	conn, ok := h.drivers[driverID]
+
+	h.mu.RUnlock()
+
+	if !ok {
+		return fmt.Errorf(
+			"driver websocket not connected: %d",
+			driverID,
+		)
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	return conn.WriteMessage(
+		websocket.TextMessage,
+		body,
+	)
 }

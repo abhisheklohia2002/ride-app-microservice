@@ -14,6 +14,9 @@ type PendingRide struct {
 	DropoffLongitude float64
 	VehicleType      string
 	CreatedAt        time.Time
+
+	OfferedDrivers  map[uint64]bool
+	RejectedDrivers map[uint64]bool
 }
 
 type PendingRideStore struct {

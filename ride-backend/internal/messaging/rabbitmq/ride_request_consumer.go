@@ -8,6 +8,8 @@ import (
 	"github.com/rabbitmq/amqp091-go"
 
 	"github.com/ride-app/ride-driver-service/internal/common/websocket"
+	"github.com/ride-app/ride-driver-service/internal/events"
+	// "github.com/ride-app/ride-driver-service/internal/events"
 )
 
 type RideRequestConsumer struct {
@@ -56,6 +58,12 @@ func (c *RideRequestConsumer) Start(
 		return err
 	}
 
+	if err := c.rabbitConsumer.Bind(
+		"driver.ride.requests",
+		"RIDE_TAKEN",
+	); err != nil {
+		return err
+	}
 	log.Println(
 		"ride request consumer listening queue=driver.ride.requests routingKey=RIDE_REQUESTED",
 	)
@@ -105,6 +113,28 @@ func (c *RideRequestConsumer) handleMessage(
 	message amqp091.Delivery,
 ) error {
 
+	switch message.RoutingKey {
+
+	case "RIDE_REQUESTED":
+		return c.handleRideRequested(message)
+
+	case "RIDE_TAKEN":
+		return c.handleRideTaken(message)
+
+	default:
+		log.Printf(
+			"unknown ride event routing key=%s",
+			message.RoutingKey,
+		)
+
+		return nil
+	}
+}
+
+func (c *RideRequestConsumer) handleRideRequested(
+	message amqp091.Delivery,
+) error {
+
 	var event RideRequestedEvent
 
 	if err := json.Unmarshal(
@@ -138,4 +168,26 @@ func (c *RideRequestConsumer) handleMessage(
 	)
 
 	return nil
+}
+func (c *RideRequestConsumer) handleRideTaken(
+	message amqp091.Delivery,
+) error {
+	var event events.RideTakenEvent
+
+	if err := json.Unmarshal(
+		message.Body,
+		&event,
+	); err != nil {
+		return err
+	}
+
+	payload := map[string]any{
+		"type": "RIDE_TAKEN",
+		"data": event,
+	}
+
+	return c.hub.SendToDriver(
+		event.DriverID,
+		payload,
+	)
 }

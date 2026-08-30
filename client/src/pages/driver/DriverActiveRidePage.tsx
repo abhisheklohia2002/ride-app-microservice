@@ -19,6 +19,8 @@ import {
 import ProfileMenu from "../../components/ProfileMenu";
 import { useCompleteRide } from "../../http/ride/hooks/use-rides";
 import { useDriverRideStore } from "../../stores/driver/driver-ride.store";
+import { useRideTrackingStore } from "../../stores/ride/rideTracking.store";
+import { useRideStore } from "../../stores/ride/ride.store";
 
 interface ActiveRide {
   id: number;
@@ -39,7 +41,7 @@ export default function DriverActiveRidePage({ ride }: Props) {
 
   const [mapReady, setMapReady] = useState(false);
   const rideRequest = useDriverRideStore((state) => state.rideRequest);
-
+ const clearRide = useRideStore((state) => state.clearRide);
   const mapContainer = useRef<HTMLDivElement | null>(null);
 
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -258,9 +260,15 @@ export default function DriverActiveRidePage({ ride }: Props) {
   }, [driverLocation, mapReady]);
 
   useEffect(() => {
-    if (!mapReady || !mapRef.current || !driverLocation) {
-      return;
-    }
+    if (
+    !mapReady ||
+    !ride.pickupLatitude ||
+    !ride.pickupLongitude ||
+    !ride.dropoffLatitude ||
+    !ride.dropoffLongitude
+  ) {
+    return;
+  }
 
     let cancelled = false;
 
@@ -334,25 +342,34 @@ export default function DriverActiveRidePage({ ride }: Props) {
   };
 
   const completeRideMutation = useCompleteRide();
-  const handleCompleteRide = () => {
-    console.log('-------->',rideRequest?.ride_id)
-    if (!Number(rideRequest?.ride_id)) {
-      return;
-    }
+ const handleCompleteRide = () => {
+  if (!Number(ride.id)) {
+    return;
+  }
 
-    completeRideMutation.mutate(
-       Number(rideRequest?.ride_id),
-      {
-        onSuccess: () => {
-          useDriverRideStore.getState().clearActiveRide();
-        },
+  completeRideMutation.mutate(Number(ride.id), {
+    onSuccess: () => {
 
-        onError: (error: Error) => {
-          console.error("Failed to complete ride:", error);
-        },
-      },
-    );
-  };
+      useRideTrackingStore.getState().clearRideTracking();
+      clearRide();
+      useDriverRideStore
+        .getState()
+        .clearActiveRide();
+
+
+      useDriverRideStore
+        .getState()
+        .clearRideRequest();
+    },
+
+    onError: (error) => {
+      console.error(
+        "Failed to complete ride:",
+        error,
+      );
+    },
+  });
+};
 
   return (
     <main className="relative h-screen w-full overflow-hidden bg-slate-100">

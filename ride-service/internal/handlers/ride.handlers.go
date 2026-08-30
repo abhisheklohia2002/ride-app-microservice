@@ -117,16 +117,32 @@ func (h *RideHandlerImpl) AcceptRide(
 	req *pb.AcceptRideRequest,
 ) (*pb.RideResponse, error) {
 
-	ride, err := h.svc.AcceptRide(
+	ride, assigned, err := h.svc.AcceptRide(
 		ctx,
-		dto.AcceptRideRequest{
-			RideID:   req.RideId,
-			DriverID: req.DriverId,
-		},
+		uint64(req.RideId),
+		req.DriverId,
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, status.Error(
+			codes.Internal,
+			err.Error(),
+		)
+	}
+
+	// Another driver already accepted the ride.
+	if !assigned {
+		return nil, status.Error(
+			codes.Aborted,
+			"ride has already been assigned to another driver",
+		)
+	}
+
+	if ride == nil {
+		return nil, status.Error(
+			codes.Internal,
+			"ride assignment succeeded but ride is missing",
+		)
 	}
 
 	response := &pb.RideResponse{
@@ -151,37 +167,6 @@ func (h *RideHandlerImpl) AcceptRide(
 			CreatedAt:   ride.CreatedAt.Format(time.RFC3339),
 			UpdatedAt:   ride.UpdatedAt.Format(time.RFC3339),
 		},
-	}
-
-	if ride.DriverID != nil {
-		driverID := int64(*ride.DriverID)
-
-		response.Ride.DriverId = &driverID
-	}
-
-	if ride.DriverAssignedAt != nil {
-		response.Ride.DriverAssignedAt =
-			ride.DriverAssignedAt.Format(time.RFC3339)
-	}
-
-	if ride.DriverArrivedAt != nil {
-		response.Ride.DriverArrivedAt =
-			ride.DriverArrivedAt.Format(time.RFC3339)
-	}
-
-	if ride.StartedAt != nil {
-		response.Ride.StartedAt =
-			ride.StartedAt.Format(time.RFC3339)
-	}
-
-	if ride.CompletedAt != nil {
-		response.Ride.CompletedAt =
-			ride.CompletedAt.Format(time.RFC3339)
-	}
-
-	if ride.CancelledAt != nil {
-		response.Ride.CancelledAt =
-			ride.CancelledAt.Format(time.RFC3339)
 	}
 
 	return response, nil
